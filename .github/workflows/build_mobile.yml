@@ -77,3 +77,43 @@ jobs:
         with:
           name: fottbol-ios-unsigned-ipa
           path: build/ios/iphoneos/FOTTBOL_iOS_unsigned.ipa
+
+  publish-release:
+    name: Publish Release (Auto Build)
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fottbol-android-release-apk
+          path: release-assets/
+
+      - name: Download iOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fottbol-ios-unsigned-ipa
+          path: release-assets/
+
+      - name: Create or Update Latest Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "FOTTBOL Güncel Derleme (Latest Build)"
+          body: |
+            ## 🚀 FOTTBOL Otomatik Derleme Çıktıları
+            Bu sürüm GitHub Actions tarafından otomatik olarak derlenmiştir.
+            
+            - 🤖 **Android:** `app-release.apk`
+            - 🍏 **iOS:** `FOTTBOL_iOS_unsigned.ipa`
+            
+            *Tarih:* ${{ github.event.head_commit.timestamp }}
+            *Son Değişiklik:* ${{ github.event.head_commit.message }}
+          files: |
+            release-assets/app-release.apk
+            release-assets/FOTTBOL_iOS_unsigned.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
