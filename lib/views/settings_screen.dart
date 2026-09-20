@@ -584,15 +584,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _checkForAppUpdates() async {
     setState(() => _isCheckingUpdate = true);
     try {
-      final release = await GitHubUpdateService.checkForUpdates(isManual: true);
+      final result = await GitHubUpdateService.checkForUpdates();
       if (!mounted) return;
-      if (release != null) {
-        await GitHubUpdateDialog.show(context, release);
+      if (result.hasUpdate && result.release != null) {
+        await GitHubUpdateDialog.show(context, result.release!);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Uygulamanız şu anda en güncel sürümde.'),
+          SnackBar(
+            content: Text('✅ ${result.message}'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

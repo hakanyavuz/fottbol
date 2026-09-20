@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/app_version.dart';
 
-/// GitHub Sürüm ve Güncelleme Bilgisi Modeli
+/// GitHub Sürüm Bilgisi Modeli
 class ReleaseInfo {
+  final int id;
   final String tagName;
   final String title;
   final String changelog;
@@ -15,6 +17,7 @@ class ReleaseInfo {
   final String? iosIpaUrl;
 
   ReleaseInfo({
+    required this.id,
     required this.tagName,
     required this.title,
     required this.changelog,
@@ -44,6 +47,7 @@ class ReleaseInfo {
     }
 
     return ReleaseInfo(
+      id: json['id'] ?? 0,
       tagName: json['tag_name'] ?? 'latest',
       title: json['name'] ?? 'FOTTBOL Güncellemesi',
       changelog: json['body'] ?? 'Performans ve tahmin motoru iyileştirmeleri.',
@@ -55,14 +59,42 @@ class ReleaseInfo {
   }
 }
 
+/// Güncelleme Kontrol Çıktısı
+class UpdateCheckResult {
+  final bool hasUpdate;
+  final ReleaseInfo? release;
+  final String currentVersion;
+  final String latestVersion;
+  final String message;
+
+  UpdateCheckResult({
+    required this.hasUpdate,
+    this.release,
+    required this.currentVersion,
+    required this.latestVersion,
+    required this.message,
+  });
+}
+
 /// GitHub Doğrudan Otomatik Güncelleme Servisi
 class GitHubUpdateService {
   static const String repoOwner = 'hakanyavuz';
   static const String repoName = 'fottbol';
-  static const String _prefKeyLastReleaseDate = 'fottbol_last_release_date';
+  static const String _prefKeyInstalledVersion = 'fottbol_installed_version';
+  static const String _prefKeyInstalledReleaseDate = 'fottbol_installed_release_date';
+  static const String _prefKeyInstalledReleaseId = 'fottbol_installed_release_id';
 
-  /// GitHub Releases API üzerinden en güncel sürümü kontrol eder
-  static Future<ReleaseInfo?> checkForUpdates({bool isManual = false}) async {
+  /// GitHub Releases API üzerinden sürüm karşılaştırması yapar
+  static Future<UpdateCheckResult> checkForUpdates() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String currentVersion = prefs.getString(_prefKeyInstalledVersion) ?? AppVersion.version;
+    final String? installedDateStr = prefs.getString(_prefKeyInstalledReleaseDate);
+    final int? installedReleaseId = prefs.getInt(_prefKeyInstalledReleaseId);
+
+    final DateTime installedDate = installedDateStr != null
+        ? (DateTime.tryParse(installedDateStr) ?? AppVersion.buildDate)
+        : AppVersion.buildDate;
+
     try {
       final url = Uri.parse('https://api.github.com/repos/$repoOwner/$repoName/releases/latest');
       final response = await http.get(
@@ -70,40 +102,63 @@ class GitHubUpdateService {
         headers: {'Accept': 'application/vnd.github.v3+json'},
       ).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        return UpdateCheckResult(
+          hasUpdate: false,
+          currentVersion: currentVersion,
+          latestVersion: currentVersion,
+          message: 'GitHub sunucusuna erişilemedi (HTTP ${response.statusCode}).',
+        );
+      }
 
       final data = jsonDecode(response.body);
       final release = ReleaseInfo.fromJson(data);
 
-      final prefs = await SharedPreferences.getInstance();
-      final lastDateStr = prefs.getString(_prefKeyLastReleaseDate);
+      // Sürüm ve tarih karşılaştırması:
+      // 1. Tag sürüm numarası mevcut sürümden büyük mü? (örn: v1.0.2 > 1.0.1)
+      final versionComparison = AppVersion.compareVersions(release.tagName, currentVersion);
 
-      if (isManual) {
-        return release;
+      // 2. Yayınlanma tarihi cihazdaki tarihten belirgin şekilde (en az 5 dakika) yeni mi?
+      final isNewerByDate = release.publishedAt.isAfter(installedDate.add(const Duration(minutes: 5)));
+
+      // 3. Release ID farklı mı?
+      final isNewerReleaseId = installedReleaseId != null && release.id > installedReleaseId;
+
+      final bool isTrulyNewer = versionComparison > 0 || isNewerByDate || isNewerReleaseId;
+
+      if (isTrulyNewer) {
+        return UpdateCheckResult(
+          hasUpdate: true,
+          release: release,
+          currentVersion: currentVersion,
+          latestVersion: release.tagName,
+          message: 'Yeni bir FOTTBOL güncellemesi mevcut (${release.tagName}).',
+        );
+      } else {
+        return UpdateCheckResult(
+          hasUpdate: false,
+          currentVersion: currentVersion,
+          latestVersion: release.tagName,
+          message: 'Uygulamanız en son sürümde ($currentVersion). Yeni bir güncelleme bulunmuyor.',
+        );
       }
-
-      if (lastDateStr == null) {
-        // İlk kullanım, mevcut tarihi kaydet
-        await prefs.setString(_prefKeyLastReleaseDate, release.publishedAt.toIso8601String());
-        return null;
-      }
-
-      final lastDate = DateTime.tryParse(lastDateStr);
-      if (lastDate != null && release.publishedAt.isAfter(lastDate)) {
-        return release;
-      }
-
-      return null;
     } catch (e) {
       debugPrint('GitHub güncelleme kontrol hatası: $e');
-      return null;
+      return UpdateCheckResult(
+        hasUpdate: false,
+        currentVersion: currentVersion,
+        latestVersion: currentVersion,
+        message: 'Güncelleme kontrolü sırasında bağlantı hatası: $e',
+      );
     }
   }
 
   /// Güncellemenin başarıyla uygulandığını kaydeder
-  static Future<void> markUpdateApplied(DateTime publishedAt) async {
+  static Future<void> markUpdateApplied(ReleaseInfo release) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKeyLastReleaseDate, publishedAt.toIso8601String());
+    await prefs.setString(_prefKeyInstalledVersion, release.tagName);
+    await prefs.setString(_prefKeyInstalledReleaseDate, release.publishedAt.toIso8601String());
+    await prefs.setInt(_prefKeyInstalledReleaseId, release.id);
   }
 
   /// Windows uygulamasını doğrudan GitHub'dan indirir ve kendisini güncelleyip yeniden başlatır
@@ -160,7 +215,7 @@ del /f /q "%~f0"
 ''';
 
       await File(updaterBatPath).writeAsString(batContent);
-      await markUpdateApplied(release.publishedAt);
+      await markUpdateApplied(release);
 
       onProgress?.call(1.0, 'Uygulama yeniden başlatılıyor...');
 

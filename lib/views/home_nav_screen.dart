@@ -38,9 +38,9 @@ class _HomeNavScreenState extends State<HomeNavScreen> {
 
   Future<void> _checkAutoUpdate() async {
     try {
-      final release = await GitHubUpdateService.checkForUpdates(isManual: false);
-      if (release != null && mounted) {
-        GitHubUpdateDialog.show(context, release);
+      final result = await GitHubUpdateService.checkForUpdates();
+      if (result.hasUpdate && result.release != null && mounted) {
+        GitHubUpdateDialog.show(context, result.release!);
       }
     } catch (_) {}
   }

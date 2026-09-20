@@ -110,6 +110,11 @@ class _GitHubUpdateDialogState extends State<GitHubUpdateDialog> {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          const Text(
+            'Yeni sürüm bulundu. Şimdi güncellemek istiyor musunuz?',
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
           if (_isUpdating) ...[
             const SizedBox(height: 16),
             LinearProgressIndicator(value: _progress, color: AppColors.premiumGold),
@@ -134,7 +139,7 @@ class _GitHubUpdateDialogState extends State<GitHubUpdateDialog> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             icon: const Icon(Icons.download_rounded, size: 18),
-            label: Text(isWindows ? 'Şimdi Otomatik Güncelle' : 'Tamam'),
+            label: Text(isWindows ? 'Evet, Güncelle' : 'Tamam'),
             onPressed: isWindows ? _startUpdate : () => Navigator.of(context).pop(),
           ),
         ],
