@@ -116,29 +116,43 @@ class GitHubUpdateService {
 
       // Sürüm ve tarih karşılaştırması:
       // 1. Tag sürüm numarası mevcut sürümden büyük mü? (örn: v1.0.2 > 1.0.1)
-      final versionComparison = AppVersion.compareVersions(release.tagName, currentVersion);
+      String remoteVersionStr = release.tagName;
+      if (remoteVersionStr.toLowerCase() == 'latest' || !remoteVersionStr.contains(RegExp(r'\d'))) {
+        final match = RegExp(r'v?(\d+\.\d+(\.\d+)?)').firstMatch(release.title) ??
+            RegExp(r'v?(\d+\.\d+(\.\d+)?)').firstMatch(release.changelog);
+        if (match != null) {
+          remoteVersionStr = match.group(0)!;
+        }
+      }
 
-      // 2. Yayınlanma tarihi cihazdaki tarihten belirgin şekilde (en az 5 dakika) yeni mi?
-      final isNewerByDate = release.publishedAt.isAfter(installedDate.add(const Duration(minutes: 5)));
+      final versionComparison = AppVersion.compareVersions(remoteVersionStr, currentVersion);
 
-      // 3. Release ID farklı mı?
-      final isNewerReleaseId = installedReleaseId != null && release.id > installedReleaseId;
+      // 2. Yayınlanma tarihi cihazdaki tarihten yeni mi? (UTC bazlı)
+      final isNewerByDate = release.publishedAt.toUtc().isAfter(installedDate.toUtc());
 
-      final bool isTrulyNewer = versionComparison > 0 || isNewerByDate || isNewerReleaseId;
+      // 3. Release ID farklı/yeni mi?
+      final isNewerReleaseId = installedReleaseId != null && release.id != installedReleaseId;
+
+      final bool isTrulyNewer = versionComparison > 0 ||
+          (versionComparison == 0 && (isNewerByDate || isNewerReleaseId));
+
+      final displayVersion = remoteVersionStr.isNotEmpty && remoteVersionStr != 'latest'
+          ? remoteVersionStr
+          : release.tagName;
 
       if (isTrulyNewer) {
         return UpdateCheckResult(
           hasUpdate: true,
           release: release,
           currentVersion: currentVersion,
-          latestVersion: release.tagName,
-          message: 'Yeni bir FOTTBOL güncellemesi mevcut (${release.tagName}).',
+          latestVersion: displayVersion,
+          message: 'Yeni bir FOTTBOL güncellemesi mevcut ($displayVersion).',
         );
       } else {
         return UpdateCheckResult(
           hasUpdate: false,
           currentVersion: currentVersion,
-          latestVersion: release.tagName,
+          latestVersion: displayVersion,
           message: 'Uygulamanız en son sürümde ($currentVersion). Yeni bir güncelleme bulunmuyor.',
         );
       }
@@ -202,12 +216,15 @@ class GitHubUpdateService {
 
       final currentExePath = Platform.resolvedExecutable;
       final appDir = File(currentExePath).parent.path;
+      final exeName = File(currentExePath).uri.pathSegments.last;
       final updaterBatPath = '$tempDir\\fottbol_self_updater.bat';
 
       final batContent = '''
 @echo off
 echo FOTTBOL guncelleniyor, lutfen bekleyin...
 timeout /t 2 /nobreak > nul
+taskkill /f /im "$exeName" >nul 2>&1
+timeout /t 1 /nobreak > nul
 tar -xf "$zipFilePath" -C "$appDir"
 del /f /q "$zipFilePath"
 start "" "$currentExePath"

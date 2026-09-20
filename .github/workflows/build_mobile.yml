@@ -119,6 +119,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download Android Artifact
         uses: actions/download-artifact@v4
         with:
@@ -137,13 +140,20 @@ jobs:
           name: fottbol-windows-release-zip
           path: release-assets/
 
-      - name: Create or Update Latest Release
+      - name: Extract Version from pubspec.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | head -n 1 | cut -d ' ' -f 2 | cut -d '+' -f 1 | tr -d '\r')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create or Update Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "FOTTBOL Güncel Derleme (Latest Build)"
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: "FOTTBOL v${{ steps.get_version.outputs.VERSION }} (Otomatik Derleme)"
+          make_latest: true
           body: |
-            ## 🚀 FOTTBOL Otomatik Derleme Çıktıları
+            ## 🚀 FOTTBOL v${{ steps.get_version.outputs.VERSION }}
             Bu sürüm GitHub Actions tarafından otomatik olarak derlenmiştir.
             
             - 🖥️ **Windows:** `FOTTBOL_Windows_x64.zip` (Masaüstü Uygulaması)

@@ -65,6 +65,7 @@ void main() {
       expect(AppVersion.compareVersions('1.0.0', '1.0.1') < 0, isTrue);
       expect(AppVersion.compareVersions('v2.0.0', 'v1.9.9') > 0, isTrue);
       expect(AppVersion.compareVersions('1.0.1.1', '1.0.1') > 0, isTrue);
+      expect(AppVersion.compareVersions('v1.0.2', 'latest') > 0, isTrue);
     });
 
     test('UpdateCheckResult durumları doğru taşır', () {
