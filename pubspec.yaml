@@ -1,0 +1,36 @@
+name: fottbol_prediction
+description: "Cross-platform Futbol Maç Tahmini ve İstatistik Analiz Uygulaması"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Durum Yonetimi
+  provider: ^6.1.2
+  flutter_riverpod: ^2.5.1
+  # Hizli NoSQL Onbellekleme
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  # HTTP Istekleri
+  http: ^1.2.1
+  # Istatistiksel Grafikler
+  fl_chart: ^0.68.0
+  # Google Gemini AI SDK
+  google_generative_ai: ^0.4.6
+  # Yerel Depolama
+  shared_preferences: ^2.2.3
+  # Tarih Formatlama
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
