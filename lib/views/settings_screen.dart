@@ -7,6 +7,8 @@ import '../providers/global_football_providers.dart';
 import '../providers/match_prediction_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/storage_service.dart';
+import '../services/github_update_service.dart';
+import '../widgets/github_update_dialog.dart';
 import 'history_screen.dart';
 
 /// Ayarlar Ekranı: Tema Değişimi, AI Entegrasyonu ve Veri Yönetimi
@@ -349,7 +351,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 28),
 
-            // 8. Veri ve Geçmiş Yönetimi
+            // 8. GitHub & Otomatik Güncelleme
+            const _SectionHeader(title: '🚀 GitHub & Otomatik Güncelleme'),
+            _buildGitHubUpdateCard(),
+            const SizedBox(height: 20),
+
+            // 9. Veri ve Geçmiş Yönetimi
             const _SectionHeader(title: '💾 Veri & Geçmiş Yönetimi'),
             Card(
               child: Column(
@@ -522,6 +529,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  bool _isCheckingUpdate = false;
+
+  Widget _buildGitHubUpdateCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.premiumGold.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.premiumGold.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.cloud_sync_rounded, color: AppColors.premiumGold, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'GitHub Otomatik Güncelleme (Windows / Mobil)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: AppColors.premiumGold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Depo: hakanyavuz/fottbol (GitHub Releases). Yeni bir sürüm olduğunda tek tıkla otomatik indirilir ve güncellenir.',
+            style: TextStyle(fontSize: 11, color: Colors.white70),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.premiumGold),
+                foregroundColor: AppColors.premiumGold,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: _isCheckingUpdate
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.premiumGold))
+                  : const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(_isCheckingUpdate ? 'Kontrol Ediliyor...' : 'Buluttan Güncellemeleri Denetle'),
+              onPressed: _isCheckingUpdate ? null : _checkForAppUpdates,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _checkForAppUpdates() async {
+    setState(() => _isCheckingUpdate = true);
+    try {
+      final release = await GitHubUpdateService.checkForUpdates(isManual: true);
+      if (!mounted) return;
+      if (release != null) {
+        await GitHubUpdateDialog.show(context, release);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Uygulamanız şu anda en güncel sürümde.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingUpdate = false);
+    }
   }
 }
 

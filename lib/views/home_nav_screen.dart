@@ -6,6 +6,8 @@ import 'live_matches_screen.dart';
 import 'settings_screen.dart';
 
 import 'value_bet_radar_screen.dart';
+import '../services/github_update_service.dart';
+import '../widgets/github_update_dialog.dart';
 
 /// Ana Alt Navigasyon Çubuğu Ekranı
 class HomeNavScreen extends StatefulWidget {
@@ -25,6 +27,23 @@ class _HomeNavScreenState extends State<HomeNavScreen> {
     LiveMatchesScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAutoUpdate();
+    });
+  }
+
+  Future<void> _checkAutoUpdate() async {
+    try {
+      final release = await GitHubUpdateService.checkForUpdates(isManual: false);
+      if (release != null && mounted) {
+        GitHubUpdateDialog.show(context, release);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {

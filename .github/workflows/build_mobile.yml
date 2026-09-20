@@ -1,4 +1,4 @@
-name: Build Mobile (Android & iOS)
+name: Build Mobile & Desktop (Android, iOS, Windows)
 
 on:
   push:
@@ -78,10 +78,43 @@ jobs:
           name: fottbol-ios-unsigned-ipa
           path: build/ios/iphoneos/FOTTBOL_iOS_unsigned.ipa
 
+  build-windows:
+    name: Build Windows Desktop
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Build Windows App (Release)
+        run: flutter build windows --release
+
+      - name: Compress Windows Build
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath build\FOTTBOL_Windows_x64.zip
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fottbol-windows-release-zip
+          path: build/FOTTBOL_Windows_x64.zip
+
   publish-release:
     name: Publish Release (Auto Build)
     runs-on: ubuntu-latest
-    needs: [build-android, build-ios]
+    needs: [build-android, build-ios, build-windows]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: write
@@ -98,6 +131,12 @@ jobs:
           name: fottbol-ios-unsigned-ipa
           path: release-assets/
 
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fottbol-windows-release-zip
+          path: release-assets/
+
       - name: Create or Update Latest Release
         uses: softprops/action-gh-release@v2
         with:
@@ -107,6 +146,7 @@ jobs:
             ## 🚀 FOTTBOL Otomatik Derleme Çıktıları
             Bu sürüm GitHub Actions tarafından otomatik olarak derlenmiştir.
             
+            - 🖥️ **Windows:** `FOTTBOL_Windows_x64.zip` (Masaüstü Uygulaması)
             - 🤖 **Android:** `app-release.apk`
             - 🍏 **iOS:** `FOTTBOL_iOS_unsigned.ipa`
             
@@ -115,5 +155,6 @@ jobs:
           files: |
             release-assets/app-release.apk
             release-assets/FOTTBOL_iOS_unsigned.ipa
+            release-assets/FOTTBOL_Windows_x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
