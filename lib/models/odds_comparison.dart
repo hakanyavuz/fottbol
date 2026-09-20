@@ -6,6 +6,8 @@ class BookmakerOdds {
   final double homeOdd;
   final double drawOdd;
   final double awayOdd;
+  final double? over25Odd;
+  final double? under25Odd;
   final DateTime? updatedAt;
 
   const BookmakerOdds({
@@ -13,6 +15,8 @@ class BookmakerOdds {
     required this.homeOdd,
     required this.drawOdd,
     required this.awayOdd,
+    this.over25Odd,
+    this.under25Odd,
     this.updatedAt,
   });
 
@@ -37,6 +41,8 @@ class BookmakerOdds {
     'homeOdd': homeOdd,
     'drawOdd': drawOdd,
     'awayOdd': awayOdd,
+    'over25Odd': over25Odd,
+    'under25Odd': under25Odd,
     'updatedAt': updatedAt?.toIso8601String(),
   };
 
@@ -45,6 +51,8 @@ class BookmakerOdds {
     homeOdd: (json['homeOdd'] as num?)?.toDouble() ?? 2.0,
     drawOdd: (json['drawOdd'] as num?)?.toDouble() ?? 3.2,
     awayOdd: (json['awayOdd'] as num?)?.toDouble() ?? 3.5,
+    over25Odd: (json['over25Odd'] as num?)?.toDouble(),
+    under25Odd: (json['under25Odd'] as num?)?.toDouble(),
     updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
   );
 }

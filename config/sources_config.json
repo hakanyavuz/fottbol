@@ -1,0 +1,63 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-09-20T19:00:00Z",
+  "health_check": {
+    "timeout_ms": 3000,
+    "probe_interval_minutes": 30,
+    "max_failures_before_circuit_break": 2
+  },
+  "providers": {
+    "espn": {
+      "name": "ESPN Live Soccer",
+      "enabled": true,
+      "primary_url": "https://site.api.espn.com/apis/site/v2/sports/soccer",
+      "mirrors": [
+        "https://site.web.api.espn.com/apis/site/v2/sports/soccer"
+      ],
+      "health_test_endpoint": "/tur.1/scoreboard?dates=20260920",
+      "headers": {
+        "Accept": "application/json"
+      }
+    },
+    "sofascore": {
+      "name": "Sofascore Sports Intelligence",
+      "enabled": true,
+      "primary_url": "https://api.sofascore.com/api/v1",
+      "mirrors": [
+        "https://api-v1.sofascore.app/api/v1",
+        "https://m.sofascore.com/api/v1"
+      ],
+      "health_test_endpoint": "/sport/football/scheduled-events/2026-09-20",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Referer": "https://www.sofascore.com/",
+        "Accept": "application/json"
+      }
+    },
+    "club_elo": {
+      "name": "Club Elo Global Rankings",
+      "enabled": true,
+      "primary_url": "http://api.clubelo.com",
+      "mirrors": [
+        "https://api.clubelo.com"
+      ],
+      "health_test_endpoint": "/2026-09-20",
+      "headers": {
+        "Accept": "*/*"
+      }
+    },
+    "mackolik": {
+      "name": "Mackolik Mobil Servisi",
+      "enabled": true,
+      "primary_url": "https://arsiv.mackolik.com",
+      "mirrors": [
+        "https://goapi.mackolik.com"
+      ],
+      "health_test_endpoint": "/CanliSonuclar/Canli.aspx",
+      "headers": {
+        "User-Agent": "Mackolik/6.0.0 (iPhone; iOS 17.0; Scale/3.00)",
+        "Accept": "*/*"
+      }
+    }
+  }
+}

@@ -25,6 +25,7 @@ import '../widgets/score_board_card.dart';
 import '../widgets/score_matrix_heatmap.dart';
 import '../widgets/stadium_weather_card.dart';
 import '../widgets/value_bet_card.dart';
+import '../widgets/service_health_badge.dart';
 
 import '../models/social_post.dart';
 import '../services/social_service.dart';
@@ -253,6 +254,12 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Kotasız Canlı Veri Hattı Sağlık Rozeti
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: ServiceHealthBadge(),
+            ),
+
             // Kadro Değişiklik Uyarısı
             if (provider.lineupAlertMessage != null)
               Container(
@@ -380,6 +387,93 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
             // 1. Ana Skorbord Kartı
             ScoreBoardCard(prediction: prediction),
             const SizedBox(height: 16),
+
+            // 1b. Club Elo & xG Takım Güç Endeksi Kartı
+            if (prediction.homeElo != null && prediction.awayElo != null) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.military_tech_outlined, color: AppColors.premiumGold, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Club Elo Güç Derecesi & Kalite Farkı',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Δ Elo: ${prediction.eloDifference != null && prediction.eloDifference! > 0 ? "+" : ""}${prediction.eloDifference?.toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  prediction.homeTeam.name,
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${prediction.homeElo!.toInt()} Elo',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                ),
+                                if (prediction.homeXg != null)
+                                  Text(
+                                    'xG: ${prediction.homeXg!.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 11, color: Colors.greenAccent),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const Text('VS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white38)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  prediction.awayTeam.name,
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${prediction.awayElo!.toInt()} Elo',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                ),
+                                if (prediction.awayXg != null)
+                                  Text(
+                                    'xG: ${prediction.awayXg!.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontSize: 11, color: Colors.greenAccent),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // 1c. Grafiksel Olasılık Analizi
             _SectionCard(

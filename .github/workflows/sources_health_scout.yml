@@ -1,0 +1,74 @@
+name: Spor Veri Hatları Nöbetçi Botu (Health Scout)
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Her 6 saatte bir otomatik çalışır
+  workflow_dispatch:        # İstenildiği an manuel tetiklenebilir
+
+jobs:
+  probe-endpoints:
+    name: Uç Nokta Sağlık Sondajı & Otomatik Bakım
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Kodu Çek
+        uses: actions/checkout@v4
+
+      - name: Python Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Gerekli Paketleri Yükle
+        run: pip install requests
+
+      - name: Sağlık Sondajı Betiğini Çalıştır
+        id: probe
+        run: |
+          python - << 'EOF'
+          import json
+          import requests
+          import sys
+          from datetime import datetime
+
+          config_path = "config/sources_config.json"
+          with open(config_path, "r", encoding="utf-8") as f:
+              config = json.load(f)
+
+          providers = config.get("providers", {})
+          updated = False
+          report = []
+
+          for key, p in providers.items():
+              name = p.get("name")
+              primary = p.get("primary_url")
+              test_ep = p.get("health_test_endpoint", "")
+              headers = p.get("headers", {})
+
+              target = f"{primary}{test_ep}"
+              status = "DOWN"
+              try:
+                  r = requests.get(target, headers=headers, timeout=5)
+                  if r.status_code < 400:
+                      status = f"HEALTHY ({r.status_code})"
+                  else:
+                      status = f"FAIL ({r.status_code})"
+              except Exception as e:
+                  status = f"ERROR ({str(e)[:30]})"
+
+              report.append(f"- **{name}**: {status} (Hedef: {target})")
+
+          print("\n".join(report))
+          config["updated_at"] = datetime.utcnow().isoformat() + "Z"
+          with open(config_path, "w", encoding="utf-8") as f:
+              json.dump(config, f, indent=2, ensure_ascii=False)
+          EOF
+
+      - name: Konfigürasyon Değişikliğini Kaydet & Commit Et
+        run: |
+          git config user.name "Fottbol Health Scout Bot"
+          git config user.email "bot@fottbol.internal"
+          git add config/sources_config.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(scout): periodic health check and endpoint probe sync" && git push origin main)

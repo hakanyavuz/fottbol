@@ -131,6 +131,15 @@ class PredictionResult {
   final bool isHighManipulationRisk;
   final String? manipulationRiskRegion;
 
+  /// Club Elo Küresel Takım Güç Endeksi
+  final double? homeElo;
+  final double? awayElo;
+  final double? eloDifference;
+
+  /// Maç Önü veya Canlı Beklenen Gol (xG) Kalite Metriği
+  final double? homeXg;
+  final double? awayXg;
+
   PredictionResult({
     required this.id,
     required this.homeTeam,
@@ -168,6 +177,11 @@ class PredictionResult {
     this.consensus,
     this.isHighManipulationRisk = false,
     this.manipulationRiskRegion,
+    this.homeElo,
+    this.awayElo,
+    this.eloDifference,
+    this.homeXg,
+    this.awayXg,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -279,6 +293,11 @@ class PredictionResult {
     'consensus': consensus?.toJson(),
     'isHighManipulationRisk': isHighManipulationRisk,
     'manipulationRiskRegion': manipulationRiskRegion,
+    'homeElo': homeElo,
+    'awayElo': awayElo,
+    'eloDifference': eloDifference,
+    'homeXg': homeXg,
+    'awayXg': awayXg,
   };
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) => PredictionResult(
@@ -337,6 +356,11 @@ class PredictionResult {
         : null,
     isHighManipulationRisk: json['isHighManipulationRisk'] ?? false,
     manipulationRiskRegion: json['manipulationRiskRegion'],
+    homeElo: (json['homeElo'] as num?)?.toDouble(),
+    awayElo: (json['awayElo'] as num?)?.toDouble(),
+    eloDifference: (json['eloDifference'] as num?)?.toDouble(),
+    homeXg: (json['homeXg'] as num?)?.toDouble(),
+    awayXg: (json['awayXg'] as num?)?.toDouble(),
   );
 }
 

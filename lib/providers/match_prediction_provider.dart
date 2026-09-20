@@ -18,6 +18,7 @@ import '../services/football_offline_repository.dart';
 import '../services/real_sports_live_service.dart';
 import '../services/match_tracker_service.dart';
 import '../services/consensus_engine.dart';
+import '../services/multi_source_football_service.dart';
 import '../core/utils/team_name_matcher.dart';
 
 class MatchPredictionProvider extends ChangeNotifier {
@@ -120,6 +121,7 @@ class MatchPredictionProvider extends ChangeNotifier {
     final keys = await StorageService.getApiKeys();
     _apiFootballKey = keys['apiFootball'] ?? '';
     _geminiApiKey = keys['gemini'] ?? '';
+    await MultiSourceFootballService.initialize();
     await loadTeams();
     await loadPastPredictions();
     _calculateAnalystPoints();
@@ -590,6 +592,11 @@ class MatchPredictionProvider extends ChangeNotifier {
           referee ??= matchedFixture.referee;
         }
       }
+      final liveStats = await MultiSourceFootballService.getLiveStatsForMatch(
+        homeTeam: _homeTeam!.name,
+        awayTeam: _awayTeam!.name,
+        date: matchDate,
+      );
       final headToHead = await _loadHeadToHead(api);
       final calib = ModelCalibrator.calibrate(_pastPredictions);
       final prediction = PoissonEngine.calculatePrediction(
@@ -597,6 +604,7 @@ class MatchPredictionProvider extends ChangeNotifier {
         matchDate: matchDate, referee: referee, rho: calib.calibratedRho,
         maxH2hWeight: calib.calibratedH2hWeight, isDataCalibrated: calib.isDataCalibrated,
         headToHead: headToHead, isNeutralGround: isNeutralGround, weatherCondition: weatherCondition,
+        homeXg: liveStats?.homeXg, awayXg: liveStats?.awayXg,
       );
       await _attachOddsComparison(prediction, autoFixtureId != -1 ? autoFixtureId : null, api);
       _currentPrediction = prediction;
@@ -629,8 +637,13 @@ class MatchPredictionProvider extends ChangeNotifier {
 
   Future<void> _attachOddsComparison(PredictionResult prediction, int? fixtureId, ApiFootballService api) async {
     try {
-      BookmakerOdds? odds;
-      if (fixtureId != null && api.hasKey) odds = await api.getOddsForFixture(fixtureId).timeout(const Duration(seconds: 10));
+      BookmakerOdds? odds = await MultiSourceFootballService.getOddsForMatch(
+        homeTeam: prediction.homeTeam.name,
+        awayTeam: prediction.awayTeam.name,
+        date: prediction.matchDate,
+        fixtureId: fixtureId,
+        apiService: api,
+      );
       odds ??= api.simulateMarketOdds(lambdaHome: prediction.lambdaHome, lambdaAway: prediction.lambdaAway);
       prediction.oddsComparison = OddsComparison.fromModelAndOdds(
         odds: odds, modelHomeProb: prediction.homeWinProbability,

@@ -6,6 +6,7 @@ import '../models/team.dart';
 import '../models/prediction_result.dart';
 import '../models/referee_stat.dart';
 import '../models/weather_pitch_condition.dart';
+import 'club_elo_service.dart';
 
 /// İstatistiksel Poisson Dağılımı ve Form Tabanlı Tahmin Motoru
 class PoissonEngine {
@@ -33,6 +34,12 @@ class PoissonEngine {
     HeadToHeadSummary? headToHead,
     bool isNeutralGround = false,
     WeatherCondition? weatherCondition,
+    double? homeElo,
+    double? awayElo,
+    double? homeXg,
+    double? awayXg,
+    int? homeRestDays,
+    int? awayRestDays,
   }) {
     final List<String> rationale = [];
 
@@ -122,9 +129,9 @@ class PoissonEngine {
 
     // 3b. Dinlenme ve Fikstür Yoğunluğu (Fatigue & Rest Days)
     // Varsayılan lig ritminde 6-7 gün dinlenme normaldir; hafta içi Avrupa maçı yapanlar 3 gün dinlenir.
-    int homeRestDays = 6;
-    int awayRestDays = 6;
-    if (matchDate != null) {
+    int effectiveHomeRestDays = homeRestDays ?? 6;
+    int effectiveAwayRestDays = awayRestDays ?? 6;
+    if (homeRestDays == null && awayRestDays == null && matchDate != null) {
       final dayOfWeek = matchDate.weekday; // 1: Pazartesi ... 7: Pazar
       // Hafta sonu maçıysa ve takım Avrupa kupalarında yer alıyorsa dinlenme 3 gün
       if ((dayOfWeek == DateTime.saturday || dayOfWeek == DateTime.sunday) &&
@@ -134,7 +141,7 @@ class PoissonEngine {
               homeTeam.name.contains('City') ||
               homeTeam.name.contains('Real') ||
               homeTeam.name.contains('Bayern'))) {
-        homeRestDays = 3;
+        effectiveHomeRestDays = 3;
       }
       if ((dayOfWeek == DateTime.saturday || dayOfWeek == DateTime.sunday) &&
           (awayTeam.name.contains('Galatasaray') ||
@@ -143,20 +150,33 @@ class PoissonEngine {
               awayTeam.name.contains('City') ||
               awayTeam.name.contains('Real') ||
               awayTeam.name.contains('Bayern'))) {
-        awayRestDays = 3;
+        effectiveAwayRestDays = 3;
       }
     }
 
-    double homeRestMultiplier = homeRestDays <= 3 ? 0.94 : 1.0;
-    double awayRestMultiplier = awayRestDays <= 3 ? 0.93 : 1.0;
-    if (homeRestDays <= 3) {
+    double homeRestMultiplier = effectiveHomeRestDays <= 3 ? 0.94 : 1.0;
+    double awayRestMultiplier = effectiveAwayRestDays <= 3 ? 0.93 : 1.0;
+    if (effectiveHomeRestDays <= 3) {
       rationale.add(
-        '${homeTeam.name} hafta içi yoğun fikstür nedeniyle $homeRestDays gün dinlenebildi; fiziksel yorgunluk faktörü uygulandı (-%6).',
+        '${homeTeam.name} hafta içi yoğun fikstür nedeniyle $effectiveHomeRestDays gün dinlenebildi; fiziksel yorgunluk faktörü uygulandı (-%6).',
       );
     }
-    if (awayRestDays <= 3) {
+    if (effectiveAwayRestDays <= 3) {
       rationale.add(
-        '${awayTeam.name} yoğun fikstür ve seyahat nedeniyle $awayRestDays gün dinlendi (-%7).',
+        '${awayTeam.name} yoğun fikstür ve seyahat nedeniyle $effectiveAwayRestDays gün dinlendi (-%7).',
+      );
+    }
+
+    // 3e. Club Elo Küresel Güç Endeksi ve Takım Kalite Farkı
+    final effectiveHomeElo = homeElo ?? ClubEloService.getTeamElo(homeTeam.name);
+    final effectiveAwayElo = awayElo ?? ClubEloService.getTeamElo(awayTeam.name);
+    final eloDiff = effectiveHomeElo - effectiveAwayElo;
+    final eloMultipliers = ClubEloService.calculateGoalMultipliers(eloDiff);
+
+    if (eloDiff.abs() >= 25.0) {
+      rationale.add(
+        '⚖️ Club Elo Güç Endeksi: ${homeTeam.name} (${effectiveHomeElo.toInt()}) vs ${awayTeam.name} (${effectiveAwayElo.toInt()}) '
+        '[Fark: ${eloDiff > 0 ? "+" : ""}${eloDiff.toInt()}]. Kadro kalite farkı beklenen gole yansıtıldı.',
       );
     }
 
@@ -230,6 +250,19 @@ class PoissonEngine {
         awayRestMultiplier *
         awayShotMultiplier *
         refereePenaltyXgMultiplier;
+
+    // Club Elo Kalite Çarpanı Uygulaması
+    lambdaHome *= eloMultipliers.homeMultiplier;
+    lambdaAway *= eloMultipliers.awayMultiplier;
+
+    // xG (Beklenen Gol) Kalite Harmanlaması
+    if (homeXg != null && awayXg != null && homeXg > 0 && awayXg > 0) {
+      lambdaHome = lambdaHome * 0.70 + homeXg * 0.30;
+      lambdaAway = lambdaAway * 0.70 + awayXg * 0.30;
+      rationale.add(
+        '🎯 xG Kalite Ayarı: Takımların son pozisyon kalitesi (${homeXg.toStringAsFixed(2)} - ${awayXg.toStringAsFixed(2)}) %30 ağırlıkla modele katıldı.',
+      );
+    }
 
     // Hava ve Zemin Koşulu Çarpanı
     if (weatherCondition != null && weatherCondition != WeatherCondition.clear) {
@@ -458,8 +491,8 @@ class PoissonEngine {
       headToHead: h2h != null && h2h.hasData ? h2h : null,
       confidenceScore: confidenceScore,
       riskLevel: riskLevel,
-      homeRestDays: homeRestDays,
-      awayRestDays: awayRestDays,
+      homeRestDays: effectiveHomeRestDays,
+      awayRestDays: effectiveAwayRestDays,
       homeShotEfficiency: round1(homeShotEff * 100),
       awayShotEfficiency: round1(awayShotEff * 100),
       refereeStat: refStat,
@@ -468,6 +501,11 @@ class PoissonEngine {
       isSparseData: isSparseData,
       isHighManipulationRisk: isHighRisk,
       manipulationRiskRegion: riskRegion,
+      homeElo: effectiveHomeElo,
+      awayElo: effectiveAwayElo,
+      eloDifference: eloDiff,
+      homeXg: homeXg,
+      awayXg: awayXg,
     );
   }
 
