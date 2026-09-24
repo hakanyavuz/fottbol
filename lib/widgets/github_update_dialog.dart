@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/constants/app_colors.dart';
 import '../services/github_update_service.dart';
 
@@ -57,9 +58,83 @@ class _GitHubUpdateDialogState extends State<GitHubUpdateDialog> {
     }
   }
 
+  Future<void> _launchExternalUrl(String url, {String? snackMessage}) async {
+    try {
+      final uri = Uri.parse(url);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        throw Exception('Bağlantı açılamadı');
+      }
+      if (mounted && snackMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(snackMessage),
+            backgroundColor: AppColors.darkCard,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('İndirme bağlantısı açılamadı: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isWindows = !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+    final bool isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final bool isIOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+    String actionButtonLabel;
+    IconData actionButtonIcon;
+    VoidCallback? actionButtonCallback;
+
+    if (isWindows) {
+      actionButtonLabel = 'Şimdi Güncelle';
+      actionButtonIcon = Icons.system_update_alt_rounded;
+      actionButtonCallback = _startUpdate;
+    } else if (isAndroid) {
+      actionButtonLabel = 'APK İndir ve Kur';
+      actionButtonIcon = Icons.android_rounded;
+      actionButtonCallback = () {
+        Navigator.of(context).pop();
+        final apkUrl = widget.release.androidApkUrl ??
+            widget.release.htmlUrl ??
+            'https://github.com/hakanyavuz/fottbol/releases';
+        _launchExternalUrl(
+          apkUrl,
+          snackMessage: '📥 Android APK indirmesi başlatıldı. İndirilen dosyaya dokunarak güncelleyebilirsiniz.',
+        );
+      };
+    } else if (isIOS) {
+      actionButtonLabel = 'Sürüm Sayfasına Git';
+      actionButtonIcon = Icons.apple_rounded;
+      actionButtonCallback = () {
+        Navigator.of(context).pop();
+        final pageUrl = widget.release.htmlUrl ??
+            widget.release.iosIpaUrl ??
+            'https://github.com/hakanyavuz/fottbol/releases';
+        _launchExternalUrl(
+          pageUrl,
+          snackMessage: '🍎 Safari üzerinden güncelleme sayfası açılıyor.',
+        );
+      };
+    } else {
+      actionButtonLabel = 'Sürümü İncele';
+      actionButtonIcon = Icons.open_in_browser_rounded;
+      actionButtonCallback = () {
+        Navigator.of(context).pop();
+        final pageUrl = widget.release.htmlUrl ?? 'https://github.com/hakanyavuz/fottbol/releases';
+        _launchExternalUrl(pageUrl);
+      };
+    }
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -111,6 +186,43 @@ class _GitHubUpdateDialogState extends State<GitHubUpdateDialog> {
             ),
           ),
           const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isWindows
+                      ? Icons.desktop_windows_rounded
+                      : isAndroid
+                          ? Icons.android_rounded
+                          : isIOS
+                              ? Icons.apple_rounded
+                              : Icons.info_outline_rounded,
+                  size: 16,
+                  color: AppColors.premiumGold,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isWindows
+                        ? 'Windows: Otomatik indirilip yeniden başlatılacaktır.'
+                        : isAndroid
+                            ? 'Android: APK indirilecek, verileriniz korunarak güncellenecektir.'
+                            : isIOS
+                                ? 'iOS: Safari sürüm sayfasına yönlendirileceksiniz.'
+                                : 'Bulut sürüm sayfasına yönlendirileceksiniz.',
+                    style: const TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           const Text(
             'Yeni sürüm bulundu. Şimdi güncellemek istiyor musunuz?',
             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white),
@@ -138,9 +250,9 @@ class _GitHubUpdateDialogState extends State<GitHubUpdateDialog> {
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: Text(isWindows ? 'Evet, Güncelle' : 'Tamam'),
-            onPressed: isWindows ? _startUpdate : () => Navigator.of(context).pop(),
+            icon: Icon(actionButtonIcon, size: 18),
+            label: Text(actionButtonLabel),
+            onPressed: actionButtonCallback,
           ),
         ],
       ],

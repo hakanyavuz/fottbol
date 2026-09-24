@@ -15,6 +15,7 @@ class ReleaseInfo {
   final String? windowsZipUrl;
   final String? androidApkUrl;
   final String? iosIpaUrl;
+  final String? htmlUrl;
 
   ReleaseInfo({
     required this.id,
@@ -25,6 +26,7 @@ class ReleaseInfo {
     this.windowsZipUrl,
     this.androidApkUrl,
     this.iosIpaUrl,
+    this.htmlUrl,
   });
 
   factory ReleaseInfo.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,7 @@ class ReleaseInfo {
       windowsZipUrl: winUrl,
       androidApkUrl: apkUrl,
       iosIpaUrl: ipaUrl,
+      htmlUrl: json['html_url']?.toString(),
     );
   }
 }

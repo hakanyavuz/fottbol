@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fottbol_prediction/core/constants/app_version.dart';
 import 'package:fottbol_prediction/services/github_update_service.dart';
+import 'package:fottbol_prediction/widgets/github_update_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -15,6 +17,7 @@ void main() {
         'name': 'FOTTBOL v1.0.5 Güncellemesi',
         'body': 'Kadro ve xG Poisson motoru güncellemeleri.',
         'published_at': '2026-09-20T18:00:00Z',
+        'html_url': 'https://github.com/hakanyavuz/fottbol/releases/tag/v1.0.5',
         'assets': [
           {
             'name': 'FOTTBOL_Windows_x64.zip',
@@ -36,6 +39,7 @@ void main() {
       expect(release.id, equals(12345));
       expect(release.tagName, equals('v1.0.5'));
       expect(release.title, equals('FOTTBOL v1.0.5 Güncellemesi'));
+      expect(release.htmlUrl, contains('v1.0.5'));
       expect(release.windowsZipUrl, contains('FOTTBOL_Windows_x64.zip'));
       expect(release.androidApkUrl, contains('app-release.apk'));
       expect(release.iosIpaUrl, contains('FOTTBOL_iOS_unsigned.ipa'));
@@ -95,6 +99,31 @@ void main() {
       expect(resultWithUpdate.hasUpdate, isTrue);
       expect(resultWithUpdate.release, isNotNull);
       expect(resultWithUpdate.latestVersion, equals('v1.0.2'));
+    });
+
+    testWidgets('GitHubUpdateDialog ekranda sürüm bilgisi ve butonları doğru görüntüler', (tester) async {
+      final mockRelease = ReleaseInfo(
+        id: 99,
+        tagName: 'v1.0.3',
+        title: 'Performans Güncellemesi',
+        changelog: 'xG ve Poisson motoru güncellendi.',
+        publishedAt: DateTime.now(),
+        androidApkUrl: 'https://github.com/hakanyavuz/fottbol/releases/download/v1.0.3/app-release.apk',
+        htmlUrl: 'https://github.com/hakanyavuz/fottbol/releases/tag/v1.0.3',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GitHubUpdateDialog(release: mockRelease),
+          ),
+        ),
+      );
+
+      expect(find.text('Yeni FOTTBOL Güncellemesi'), findsOneWidget);
+      expect(find.text('Sürüm: v1.0.3'), findsOneWidget);
+      expect(find.text('Performans Güncellemesi'), findsOneWidget);
+      expect(find.text('Daha Sonra'), findsOneWidget);
     });
   });
 }
