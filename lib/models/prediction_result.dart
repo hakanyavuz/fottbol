@@ -3,6 +3,7 @@ import 'team.dart';
 import 'odds_comparison.dart';
 import 'referee_stat.dart';
 import 'market_consensus.dart';
+import '../services/specialized_markets_engine.dart';
 
 /// Olası skor ve ihtimali tutan yardımcı sınıf
 class ScoreProbability {
@@ -140,6 +141,20 @@ class PredictionResult {
   final double? homeXg;
   final double? awayXg;
 
+  /// Akıllı Çoklu Bahis Tercihleri
+  final String primaryPick; // Örn: "MS 1 (Ev Sahibi)"
+  final double primaryPickConfidence; // Örn: 74.5
+  final String secondaryPick; // Örn: "2.5 Üst" veya "KG Var"
+  final String safetyPick; // Örn: "1X Çifte Şans"
+  final double expectedValue; // Model beklenti değeri EV
+  final bool isValueBet; // EV > 1.05 ise true
+
+  /// Özel Pazarlar: Kart ve Korner Tahminleri
+  final CardCornerPrediction? cardCornerPrediction;
+
+  /// Kabus Rakip (Bogey Team) ve Ters Eşleşme Analizi
+  final BogeyAnalysis? bogeyAnalysis;
+
   PredictionResult({
     required this.id,
     required this.homeTeam,
@@ -182,6 +197,14 @@ class PredictionResult {
     this.eloDifference,
     this.homeXg,
     this.awayXg,
+    this.primaryPick = 'MS 1 (Ev Sahibi)',
+    this.primaryPickConfidence = 65.0,
+    this.secondaryPick = '2.5 Üst',
+    this.safetyPick = '1X Çifte Şans',
+    this.expectedValue = 1.0,
+    this.isValueBet = false,
+    this.cardCornerPrediction,
+    this.bogeyAnalysis,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -298,6 +321,14 @@ class PredictionResult {
     'eloDifference': eloDifference,
     'homeXg': homeXg,
     'awayXg': awayXg,
+    'primaryPick': primaryPick,
+    'primaryPickConfidence': primaryPickConfidence,
+    'secondaryPick': secondaryPick,
+    'safetyPick': safetyPick,
+    'expectedValue': expectedValue,
+    'isValueBet': isValueBet,
+    'cardCornerPrediction': cardCornerPrediction?.toJson(),
+    'bogeyAnalysis': bogeyAnalysis?.toJson(),
   };
 
   factory PredictionResult.fromJson(Map<String, dynamic> json) => PredictionResult(
@@ -361,6 +392,18 @@ class PredictionResult {
     eloDifference: (json['eloDifference'] as num?)?.toDouble(),
     homeXg: (json['homeXg'] as num?)?.toDouble(),
     awayXg: (json['awayXg'] as num?)?.toDouble(),
+    primaryPick: json['primaryPick'] ?? 'MS 1 (Ev Sahibi)',
+    primaryPickConfidence: (json['primaryPickConfidence'] as num?)?.toDouble() ?? 65.0,
+    secondaryPick: json['secondaryPick'] ?? '2.5 Üst',
+    safetyPick: json['safetyPick'] ?? '1X Çifte Şans',
+    expectedValue: (json['expectedValue'] as num?)?.toDouble() ?? 1.0,
+    isValueBet: json['isValueBet'] ?? false,
+    cardCornerPrediction: json['cardCornerPrediction'] is Map
+        ? CardCornerPrediction.fromJson(Map<String, dynamic>.from(json['cardCornerPrediction'] as Map))
+        : null,
+    bogeyAnalysis: json['bogeyAnalysis'] is Map
+        ? BogeyAnalysis.fromJson(Map<String, dynamic>.from(json['bogeyAnalysis'] as Map))
+        : null,
   );
 }
 

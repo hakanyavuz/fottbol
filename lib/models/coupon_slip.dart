@@ -250,7 +250,7 @@ class CouponSlip {
             leagueName: league,
             matchDate: p.matchDate,
             selectionLabel: '2.5 Gol Üstü',
-            odds: 1.65,
+            odds: odds?.over25Odd ?? 1.65,
             confidenceScore: p.over25Probability,
             riskCategory: 'İdeal',
             prediction: p,

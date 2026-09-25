@@ -110,6 +110,22 @@ class ValueBet {
       oddsValue: odds.odds.awayOdd,
     );
 
+    // Gol Pazarı (2.5 Üst / Alt) Kıyaslaması
+    if (odds.odds.over25Odd != null && odds.odds.over25Odd! > 1.01) {
+      evaluate(
+        label: '2.5 Gol Üstü',
+        modelProb: p.over25Probability,
+        oddsValue: odds.odds.over25Odd!,
+      );
+    }
+    if (odds.odds.under25Odd != null && odds.odds.under25Odd! > 1.01) {
+      evaluate(
+        label: '2.5 Gol Altı',
+        modelProb: (100.0 - p.over25Probability).clamp(0.0, 100.0),
+        oddsValue: odds.odds.under25Odd!,
+      );
+    }
+
     // Kenar avantajına (Edge) göre en karlıdan en aza sırala
     list.sort((a, b) => b.edgePercentage.compareTo(a.edgePercentage));
     return list;

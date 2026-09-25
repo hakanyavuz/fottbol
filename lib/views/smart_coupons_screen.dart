@@ -21,6 +21,8 @@ import '../services/real_sports_live_service.dart';
 import '../services/storage_service.dart';
 import '../services/volleyball_engine.dart';
 import '../services/weather_service.dart';
+import '../services/club_elo_service.dart';
+import '../services/multi_source_football_service.dart';
 import '../widgets/smart_coupon_wizard_card.dart';
 import 'prediction_screen.dart';
 
@@ -211,6 +213,17 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
             final weather = await WeatherService.getLiveWeather(f.venueName ?? f.homeTeamName).timeout(const Duration(seconds: 2));
             _weatherByFixtureId[f.id] = weather;
 
+            final homeElo = ClubEloService.getTeamElo(teams.home.name);
+            final awayElo = ClubEloService.getTeamElo(teams.away.name);
+
+            BookmakerOdds? odds = await MultiSourceFootballService.getOddsForMatch(
+              homeTeam: teams.home.name,
+              awayTeam: teams.away.name,
+              date: f.date,
+              fixtureId: f.id,
+              apiService: footballService,
+            ).timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
+
             final pred = PoissonEngine.calculatePrediction(
               homeTeam: teams.home,
               awayTeam: teams.away,
@@ -218,9 +231,12 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
               matchDate: f.date,
               referee: f.referee,
               weatherCondition: weather.toWeatherCondition,
+              homeElo: homeElo,
+              awayElo: awayElo,
+              marketOdds: odds,
             );
 
-            final odds = footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
+            odds ??= footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
             pred.oddsComparison = OddsComparison.fromModelAndOdds(
               odds: odds,
               modelHomeProb: pred.homeWinProbability,

@@ -10,6 +10,8 @@ import '../services/storage_service.dart';
 import '../services/github_update_service.dart';
 import '../widgets/github_update_dialog.dart';
 import 'history_screen.dart';
+import 'ai_chat_assistant_screen.dart';
+import 'roi_tracker_screen.dart';
 
 /// Ayarlar Ekranı: Tema Değişimi, AI Entegrasyonu ve Veri Yönetimi
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -354,6 +356,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             // 8. GitHub & Otomatik Güncelleme
             const _SectionHeader(title: '🚀 GitHub & Otomatik Güncelleme'),
             _buildGitHubUpdateCard(),
+            // 8b. Quant Danışmanlık ve Analiz Araçları
+            const _SectionHeader(title: '📊 Quant Araçları & Danışmanlık'),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.query_stats_outlined, color: Colors.greenAccent),
+                    title: const Text('Quant Başarı Karnesi & ROI Takibi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Modelin isabet oranları ve teorik kasa getirisi', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.chevron_right, size: 18),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoiTrackerScreen())),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.smart_toy_outlined, color: Colors.amberAccent),
+                    title: const Text('AI Futbol & Taktik Danışmanı', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Yapay zeka ile anlık sohbet ve strateji danışmanlığı', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    trailing: const Icon(Icons.chevron_right, size: 18),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AiChatAssistantScreen())),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
 
             // 9. Veri ve Geçmiş Yönetimi

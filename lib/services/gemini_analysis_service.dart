@@ -64,23 +64,27 @@ Yanıtın kısa (maksimum 3-4 cümle), profesyonel ve ilgi çekici olsun. Türk�
       );
 
       final prompt = '''
-Sen tecrübeli ve profesyonel bir futbol analisti ve taktik danışmanısın.
-Aşağıda istatistiksel Poisson dağılımı ile hesaplanmış maç verileri bulunmaktadır. Bu verileri yorumlayarak Türkçe, sürükleyici ve taktiksel derinliği olan bir maç analizi yaz.
+Sen tecrübeli ve profesyonel bir futbol analisti, taktik danışmanı ve spor quant uzmanısın.
+Aşağıda hibrit Poisson modeli, canlı bülten oranları (Bayesian Konsensüs) ve Club Elo güç endeksleri ile hesaplanmış maç verileri bulunmaktadır. Bu verileri yorumlayarak Türkçe, sürükleyici, analitik ve taktiksel derinliği olan bir maç analizi yaz.
 
-MAÇ BİLGİLERİ:
+MAÇ VE MOTOR BİLGİLERİ:
 - Karşılaşma: ${prediction.homeTeam.name} (Ev Sahibi) vs ${prediction.awayTeam.name} (Deplasman)
+- Club Elo Güçleri: ${prediction.homeTeam.name}: ${prediction.homeElo?.toInt() ?? "1500"} Elo | ${prediction.awayTeam.name}: ${prediction.awayElo?.toInt() ?? "1500"} Elo (Fark: ${prediction.eloDifference != null ? prediction.eloDifference!.toStringAsFixed(0) : "0"})
 - Algoritmanın Tahmin Ettiği Skor: ${prediction.predictedScoreString}
 - Beklenen Goller (xG): ${prediction.homeTeam.name}: ${prediction.lambdaHome.toStringAsFixed(2)} | ${prediction.awayTeam.name}: ${prediction.lambdaAway.toStringAsFixed(2)}
-- Olasılık Dağılımı: Ev Galibiyeti: %${prediction.homeWinProbability} | Beraberlik: %${prediction.drawProbability} | Deplasman Galibiyeti: %${prediction.awayWinProbability}
-- 2.5 Gol Üstü İhtimali: %${prediction.over25Probability}
-- Karşılıklı Gol Var İhtimali: %${prediction.bothTeamsToScoreProbability}
+- Bayesian Olasılık Dağılımı: Ev: %${prediction.homeWinProbability} | Beraberlik: %${prediction.drawProbability} | Deplasman: %${prediction.awayWinProbability}
+- 2.5 Gol Üstü İhtimali: %${prediction.over25Probability} | KG Var: %${prediction.bothTeamsToScoreProbability}
+- 🎯 Modelin Banko Tercihi: ${prediction.primaryPick} (Güven: %${prediction.primaryPickConfidence})
+- ⚽ Gol Pazarı Önerisi: ${prediction.secondaryPick}
+- 🛡️ Sigorta Tercihi: ${prediction.safetyPick}
+- 💰 Değerli Bahis (Value Bet) Durumu: ${prediction.isValueBet ? "EV Avantajı Var (Beklenen Değer: ${prediction.expectedValue})" : "Normal Oran Dengesi (EV: ${prediction.expectedValue})"}
 - Ev Sahibi Sakatlıklar: ${prediction.homeTeam.injuredPlayers.isEmpty ? 'Eksik yok' : prediction.homeTeam.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')}
 - Deplasman Sakatlıklar: ${prediction.awayTeam.injuredPlayers.isEmpty ? 'Eksik yok' : prediction.awayTeam.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')}
 
-Lütfen yanıtında şu 3 ana başlığı kullan ve samimi, net bir spor yorumcusu üslubuyla açıkla:
+Lütfen yanıtında şu 3 ana başlığı kullan ve samimi, net, uzman bir spor yorumcusu üslubuyla açıkla:
 1. ⚽ Saha İçi Senaryosu & Taktiksel Kurgu
-2. ⚠️ Kilit Eşleşme & Sakatlıkların Belirleyici Etkisi
-3. 🎯 Tahmin Kararı & Maçın Olası Kırılma Anı
+2. ⚠️ Kilit Eşleşme & Kadro/Elo Güç Dengesi
+3. 🎯 Bahis Karnesi Denetimi & Model Kararı (Banko, Gol Pazarı ve Value Bet tavsiyesini taktiksel olarak onayla veya uyar)
 ''';
 
       final response = await model.generateContent([Content.text(prompt)]);
@@ -117,15 +121,30 @@ Lütfen yanıtında şu 3 ana başlığı kullan ve samimi, net bir spor yorumcu
       injuryNote = 'Her iki takım da sahaya tam kadro çıkmaya yakın, taktiksel disiplin son düdüğe kadar korunacaktır.';
     }
 
+    String eloNote = '';
+    if (p.eloDifference != null && p.eloDifference!.abs() >= 80) {
+      eloNote = p.eloDifference! > 0
+          ? 'Elo derecelendirmesinde ${home.name} rakibinden +${p.eloDifference!.toStringAsFixed(0)} puan üstün; kalite farkı sahaya yansıyabilir.'
+          : 'Elo derecelendirmesinde ${away.name} rakibinden +${(-p.eloDifference!).toStringAsFixed(0)} puan üstün; deplasmanda belirgin bir siklet farkı var.';
+    }
+
+    final valueNote = p.isValueBet
+        ? '💰 Quant Değerli Bahis Radarı: Büroların oranları ile model olasılıkları arasında pozitif katsayı (+%${((p.expectedValue - 1.0) * 100).toStringAsFixed(1)} EV) tespit edildi.'
+        : '📊 Oran Dengesi: Büroların canlı oranları ile olasılık modeli makul bir dengede seyrediyor.';
+
     return '''
 1. ⚽ Saha İçi Senaryosu & Taktiksel Kurgu:
-${home.name}, seyircisi önünde iç saha hücum gücü (%${(home.stats.avgHomeGoalsScored / LeagueConstants.avgHomeGoals * 100).toStringAsFixed(0)}) ile maça baskılı başlamayı hedefleyecektir. ${away.name} ise kontra ataklarla geçiş hücumları arayacaktır. $tempo
+${home.name}, seyircisi önünde iç saha hücum gücü (%${(home.stats.avgHomeGoalsScored / LeagueConstants.avgHomeGoals * 100).toStringAsFixed(0)}) ile maça baskılı başlamayı hedefleyecektir. ${away.name} ise kontra ataklarla geçiş hücumları arayacaktır. $tempo $eloNote
 
 2. ⚠️ Kilit Eşleşme & Sakatlıkların Belirleyici Etkisi:
 $injuryNote ${home.topScorer != null ? 'Ev sahibinde ${home.topScorer!.name} (${home.topScorer!.goals} gol) kilit tehdit oluşturuyor.' : ''}
 
-3. 🎯 Tahmin Kararı & Maçın Olası Kırılma Anı:
-İstatistiksel xG beklentisi (${p.lambdaHome.toStringAsFixed(2)} - ${p.lambdaAway.toStringAsFixed(2)}) doğrultusunda karşılaşmanın en kuvvetli skoru ${p.predictedScoreString} olarak öne çıkıyor. Ev sahibi galibiyeti %${p.homeWinProbability} ihtimalle en yüksek olasılık konumunda.
+3. 🎯 Bahis Karnesi Denetimi & Model Kararı:
+• Banko Tercih: ${p.primaryPick} (Güven: %${p.primaryPickConfidence})
+• Gol Pazarı: ${p.secondaryPick}
+• Sigorta Çifte Şans: ${p.safetyPick}
+• Öngörülen Skor: ${p.predictedScoreString} (xG: ${p.lambdaHome.toStringAsFixed(2)} - ${p.lambdaAway.toStringAsFixed(2)})
+$valueNote
 ''';
   }
 

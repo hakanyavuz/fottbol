@@ -10,6 +10,8 @@ import 'squad_screen.dart';
 import 'country_list_screen.dart';
 import 'global_team_search_screen.dart';
 import 'custom_match_arena_screen.dart';
+import 'ai_chat_assistant_screen.dart';
+import 'roi_tracker_screen.dart';
 import '../widgets/popular_leagues_widget.dart';
 
 import '../models/sport_type.dart';
@@ -75,7 +77,24 @@ class TeamSelectionScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: const Icon(Icons.query_stats_outlined, color: Colors.greenAccent),
+            tooltip: 'Kasa & ROI Takibi',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RoiTrackerScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.smart_toy_outlined, color: Colors.amberAccent),
+            tooltip: 'AI Quant Danışmanı',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AiChatAssistantScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.travel_explore, color: AppColors.primary),
+            tooltip: 'Global Takım Arama',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const GlobalTeamSearchScreen()),

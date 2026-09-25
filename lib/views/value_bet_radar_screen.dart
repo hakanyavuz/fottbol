@@ -8,6 +8,8 @@ import '../models/value_bet.dart';
 import '../providers/global_football_providers.dart';
 import '../services/poisson_engine.dart';
 import '../services/real_sports_live_service.dart';
+import '../services/club_elo_service.dart';
+import '../services/multi_source_football_service.dart';
 import '../widgets/value_bet_card.dart';
 import 'prediction_screen.dart';
 
@@ -86,15 +88,28 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
         try {
           final teams = await footballService.buildTeamsForFixture(f).timeout(const Duration(seconds: 3));
 
+          final homeElo = ClubEloService.getTeamElo(teams.home.name);
+          final awayElo = ClubEloService.getTeamElo(teams.away.name);
+
+          BookmakerOdds? odds = await MultiSourceFootballService.getOddsForMatch(
+            homeTeam: teams.home.name,
+            awayTeam: teams.away.name,
+            date: f.date,
+            fixtureId: f.id,
+            apiService: footballService,
+          ).timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
+
           final pred = PoissonEngine.calculatePrediction(
             homeTeam: teams.home,
             awayTeam: teams.away,
             fixtureId: f.id,
             matchDate: f.date,
+            homeElo: homeElo,
+            awayElo: awayElo,
+            marketOdds: odds,
           );
 
-          // Oranları çek veya simüle et
-          final odds = footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
+          odds ??= footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
           pred.oddsComparison = OddsComparison.fromModelAndOdds(
             odds: odds,
             modelHomeProb: pred.homeWinProbability,

@@ -25,6 +25,8 @@ import '../widgets/score_board_card.dart';
 import '../widgets/score_matrix_heatmap.dart';
 import '../widgets/stadium_weather_card.dart';
 import '../widgets/value_bet_card.dart';
+import '../widgets/smart_picks_report_card.dart';
+import '../widgets/specialized_markets_card.dart';
 import '../widgets/service_health_badge.dart';
 
 import '../models/social_post.dart';
@@ -37,6 +39,7 @@ import '../models/team.dart';
 import '../core/utils/team_name_matcher.dart';
 import '../services/api_football_service.dart';
 import '../services/football_offline_repository.dart';
+import 'ai_chat_assistant_screen.dart';
 
 /// 5. Ekran: Tahmini Skor, Poisson İhtimalleri ve Gemini AI Taktiksel Analiz Raporu
 ///
@@ -51,13 +54,19 @@ class PredictionScreen extends StatelessWidget {
 
   /// Sosyal Medya / WhatsApp formatında zengin bülten metni
   String _buildSocialBulletin(PredictionResult p) {
-    return '''⚡ POISSON MAÇ ÖNÜ BÜLTENİ ⚡
+    return '''⚡ QUANT MAÇ ÖNÜ BAHİS KARNESİ ⚡
 ━━━━━━━━━━━━━━━━━━━━━
 ⚽ ${p.homeTeam.name} vs ${p.awayTeam.name}
 🎯 Tahmini Skor: ${p.predictedScoreString}
 📊 xG (Beklenen Gol): ${p.lambdaHome.toStringAsFixed(2)} - ${p.lambdaAway.toStringAsFixed(2)}
 ━━━━━━━━━━━━━━━━━━━━━
-📈 MAÇ SONUCU İHTİMALLERİ:
+🌟 AKILLI TERCİHLER:
+  👑 Banko: ${p.primaryPick} (%${p.primaryPickConfidence.toStringAsFixed(0)} Güven)
+  ⚽ Gol Pazarı: ${p.secondaryPick}
+  🛡️ Sigorta: ${p.safetyPick}
+  ${p.isValueBet ? '💰 DEĞERLİ BAHİS: EV +%${((p.expectedValue - 1.0) * 100).toStringAsFixed(1)} Avantaj!' : '📊 Oran Durumu: Dengeli'}
+━━━━━━━━━━━━━━━━━━━━━
+📈 MAÇ SONUCU İHTİMALLERİ (Bayesian Konsensüs):
   [1] Ev Sahibi: %${p.homeWinProbability}
   [X] Beraberlik: %${p.drawProbability}
   [2] Deplasman : %${p.awayWinProbability}
@@ -238,6 +247,14 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
               },
             ),
           IconButton(
+            icon: const Icon(Icons.smart_toy_outlined, color: Colors.amberAccent),
+            tooltip: 'Bu Maçı AI Danışmanına Sor',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AiChatAssistantScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Bülten Paylaş / Önizle',
             onPressed: () => _showSocialShareDialog(context, prediction),
@@ -386,6 +403,10 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
 
             // 1. Ana Skorbord Kartı
             ScoreBoardCard(prediction: prediction),
+            const SizedBox(height: 16),
+
+            // 1a. Akıllı Bahis Karnesi (Quant Multi-Market Picks & EV)
+            SmartPicksReportCard(prediction: prediction),
             const SizedBox(height: 16),
 
             // 1b. Club Elo & xG Takım Güç Endeksi Kartı
@@ -597,6 +618,9 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
               RefereeCard(referee: prediction.refereeStat!),
               const SizedBox(height: 16),
             ],
+
+            // 2d2. Özel Pazarlar: Kart & Korner Modeli & Kabus Rakip Uyarısı
+            SpecializedMarketsCard(prediction: prediction),
 
             // 2e. Monte Carlo 10.000 Maç Simülatörü
             MonteCarloCard(

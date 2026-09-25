@@ -19,6 +19,7 @@ import '../services/real_sports_live_service.dart';
 import '../services/match_tracker_service.dart';
 import '../services/consensus_engine.dart';
 import '../services/multi_source_football_service.dart';
+import '../services/club_elo_service.dart';
 import '../core/utils/team_name_matcher.dart';
 
 class MatchPredictionProvider extends ChangeNotifier {
@@ -446,10 +447,20 @@ class MatchPredictionProvider extends ChangeNotifier {
       _awayTeam = newAway;
       final calib = ModelCalibrator.calibrate(_pastPredictions);
       _currentPrediction = PoissonEngine.calculatePrediction(
-        homeTeam: _homeTeam!, awayTeam: _awayTeam!, fixtureId: _currentPrediction!.fixtureId,
-        matchDate: _currentPrediction!.matchDate, referee: _currentPrediction!.refereeStat?.name,
-        rho: calib.calibratedRho, maxH2hWeight: calib.calibratedH2hWeight, isDataCalibrated: calib.isDataCalibrated,
+        homeTeam: _homeTeam!,
+        awayTeam: _awayTeam!,
+        fixtureId: _currentPrediction!.fixtureId,
+        matchDate: _currentPrediction!.matchDate,
+        referee: _currentPrediction!.refereeStat?.name,
+        rho: calib.calibratedRho,
+        maxH2hWeight: calib.calibratedH2hWeight,
+        isDataCalibrated: calib.isDataCalibrated,
         headToHead: _currentPrediction!.headToHead,
+        homeElo: _currentPrediction!.homeElo,
+        awayElo: _currentPrediction!.awayElo,
+        marketOdds: _currentPrediction!.oddsComparison?.odds,
+        homeXg: _currentPrediction!.homeXg,
+        awayXg: _currentPrediction!.awayXg,
       );
     }
   }
@@ -599,14 +610,47 @@ class MatchPredictionProvider extends ChangeNotifier {
       );
       final headToHead = await _loadHeadToHead(api);
       final calib = ModelCalibrator.calibrate(_pastPredictions);
-      final prediction = PoissonEngine.calculatePrediction(
-        homeTeam: _homeTeam!, awayTeam: _awayTeam!, fixtureId: autoFixtureId != -1 ? autoFixtureId : null,
-        matchDate: matchDate, referee: referee, rho: calib.calibratedRho,
-        maxH2hWeight: calib.calibratedH2hWeight, isDataCalibrated: calib.isDataCalibrated,
-        headToHead: headToHead, isNeutralGround: isNeutralGround, weatherCondition: weatherCondition,
-        homeXg: liveStats?.homeXg, awayXg: liveStats?.awayXg,
+
+      // Club Elo küresel güç dereceleri
+      final double homeElo = ClubEloService.getTeamElo(_homeTeam!.name);
+      final double awayElo = ClubEloService.getTeamElo(_awayTeam!.name);
+
+      // Piyasa Oranlarını çek (Sofascore / Canlı Hatlar)
+      BookmakerOdds? marketOdds = await MultiSourceFootballService.getOddsForMatch(
+        homeTeam: _homeTeam!.name,
+        awayTeam: _awayTeam!.name,
+        date: matchDate,
+        fixtureId: autoFixtureId != -1 ? autoFixtureId : null,
+        apiService: api,
       );
-      await _attachOddsComparison(prediction, autoFixtureId != -1 ? autoFixtureId : null, api);
+
+      final prediction = PoissonEngine.calculatePrediction(
+        homeTeam: _homeTeam!,
+        awayTeam: _awayTeam!,
+        fixtureId: autoFixtureId != -1 ? autoFixtureId : null,
+        matchDate: matchDate,
+        referee: referee,
+        rho: calib.calibratedRho,
+        maxH2hWeight: calib.calibratedH2hWeight,
+        isDataCalibrated: calib.isDataCalibrated,
+        headToHead: headToHead,
+        isNeutralGround: isNeutralGround,
+        weatherCondition: weatherCondition,
+        homeElo: homeElo,
+        awayElo: awayElo,
+        homeXg: liveStats?.homeXg,
+        awayXg: liveStats?.awayXg,
+        marketOdds: marketOdds,
+      );
+
+      marketOdds ??= api.simulateMarketOdds(lambdaHome: prediction.lambdaHome, lambdaAway: prediction.lambdaAway);
+      prediction.oddsComparison = OddsComparison.fromModelAndOdds(
+        odds: marketOdds,
+        modelHomeProb: prediction.homeWinProbability,
+        modelDrawProb: prediction.drawProbability,
+        modelAwayProb: prediction.awayWinProbability,
+      );
+      prediction.consensus = ConsensusEngine.buildConsensus(prediction: prediction, odds: marketOdds);
       _currentPrediction = prediction;
       _currentLineups = null;
       _currentEvents = [];
@@ -633,24 +677,6 @@ class MatchPredictionProvider extends ChangeNotifier {
       _isAnalyzingGemini = false;
       notifyListeners();
     }
-  }
-
-  Future<void> _attachOddsComparison(PredictionResult prediction, int? fixtureId, ApiFootballService api) async {
-    try {
-      BookmakerOdds? odds = await MultiSourceFootballService.getOddsForMatch(
-        homeTeam: prediction.homeTeam.name,
-        awayTeam: prediction.awayTeam.name,
-        date: prediction.matchDate,
-        fixtureId: fixtureId,
-        apiService: api,
-      );
-      odds ??= api.simulateMarketOdds(lambdaHome: prediction.lambdaHome, lambdaAway: prediction.lambdaAway);
-      prediction.oddsComparison = OddsComparison.fromModelAndOdds(
-        odds: odds, modelHomeProb: prediction.homeWinProbability,
-        modelDrawProb: prediction.drawProbability, modelAwayProb: prediction.awayWinProbability,
-      );
-      prediction.consensus = ConsensusEngine.buildConsensus(prediction: prediction, odds: odds);
-    } catch (_) {}
   }
 
   Future<HeadToHeadSummary?> _loadHeadToHead(ApiFootballService api) async {

@@ -6,7 +6,9 @@ import '../models/team.dart';
 import '../models/prediction_result.dart';
 import '../models/referee_stat.dart';
 import '../models/weather_pitch_condition.dart';
+import '../models/odds_comparison.dart';
 import 'club_elo_service.dart';
+import 'specialized_markets_engine.dart';
 
 /// İstatistiksel Poisson Dağılımı ve Form Tabanlı Tahmin Motoru
 class PoissonEngine {
@@ -40,6 +42,7 @@ class PoissonEngine {
     double? awayXg,
     int? homeRestDays,
     int? awayRestDays,
+    BookmakerOdds? marketOdds,
   }) {
     final List<String> rationale = [];
 
@@ -381,18 +384,49 @@ class PoissonEngine {
     // Skorları olasılığa göre azalan sırala
     scoreProbabilities.sort((a, b) => b.probability.compareTo(a.probability));
 
-    // Çıktı ve xG Uyumlu Dinamik Skor Seçimi (Outcome & xG Centroid Alignment):
-    // Klasik Poisson modellerinde "Poisson Argmax Mode Tuzağı" görülür:
-    // Ev sahibi kazanma toplamı %55-60 bile olsa, galibiyet olasılıkları birçok hücreye
-    // dağılırken, saf 1-0 hücresi matematiksel olarak 2-0 veya 3-1'den daha yüksek tekil hücre
-    // değerine sahip olur. Bu sebeple saf mod seçimi her maça 1-0/2-1/1-1 üretir.
-    // Çözüm: Modelin öngördüğü 1X2 sonucuna (Ev / Beraberlik / Deplasman) uyan aday skorlar
-    // arasından, beklenen gol vektörüne (lambdaHome, lambdaAway) en yakın ve olasılık kütlesi
-    // yüksek olan dinamik centroid skoru manşet skoru olarak seçilir.
+    // Bayesian Oran Füzyonu (Canlı Bülten Oranları ile İstatistik Modeli Harmanlama)
+    double fusedHomeWin = homeWinTotal;
+    double fusedDraw = drawTotal;
+    double fusedAwayWin = awayWinTotal;
+    double fusedOver25 = over25Total;
+
+    if (marketOdds != null) {
+      final mHome = marketOdds.marketHomeProbability;
+      final mDraw = marketOdds.marketDrawProbability;
+      final mAway = marketOdds.marketAwayProbability;
+
+      // Model ile büro oranlarını %50 - %50 Bayesian harmanla
+      fusedHomeWin = (homeWinTotal * 0.50) + (mHome * 0.50);
+      fusedDraw = (drawTotal * 0.50) + (mDraw * 0.50);
+      fusedAwayWin = (awayWinTotal * 0.50) + (mAway * 0.50);
+
+      final totalFused = fusedHomeWin + fusedDraw + fusedAwayWin;
+      if (totalFused > 0) {
+        fusedHomeWin = (fusedHomeWin / totalFused) * 100.0;
+        fusedDraw = (fusedDraw / totalFused) * 100.0;
+        fusedAwayWin = (fusedAwayWin / totalFused) * 100.0;
+      }
+
+      if (marketOdds.over25Odd != null && marketOdds.under25Odd != null && marketOdds.over25Odd! > 1.0) {
+        final overMargin = (1.0 / marketOdds.over25Odd!) + (1.0 / marketOdds.under25Odd!);
+        if (overMargin > 0) {
+          final mOver = ((1.0 / marketOdds.over25Odd!) / overMargin) * 100.0;
+          fusedOver25 = (over25Total * 0.50) + (mOver * 0.50);
+        }
+      }
+
+      rationale.add(
+        '📊 Bayesian Piyasa Füzyonu: Canlı bülten oranları (${marketOdds.homeOdd.toStringAsFixed(2)} - '
+        '${marketOdds.drawOdd.toStringAsFixed(2)} - ${marketOdds.awayOdd.toStringAsFixed(2)}) matematiksel modelle '
+        'harmanlanarak olasılıklar kalibre edildi.',
+      );
+    }
+
+    // Çıktı ve xG Uyumlu Dinamik Skor Seçimi (Outcome & xG Centroid Alignment)
     final String dominantOutcome;
-    if (homeWinTotal >= drawTotal && homeWinTotal >= awayWinTotal) {
+    if (fusedHomeWin >= fusedDraw && fusedHomeWin >= fusedAwayWin) {
       dominantOutcome = 'HOME';
-    } else if (awayWinTotal >= drawTotal && awayWinTotal >= homeWinTotal) {
+    } else if (fusedAwayWin >= fusedDraw && fusedAwayWin >= fusedHomeWin) {
       dominantOutcome = 'AWAY';
     } else {
       dominantOutcome = 'DRAW';
@@ -435,18 +469,16 @@ class PoissonEngine {
     );
 
     // 7. Güven Skoru (Confidence Score) & Risk Seviyesi Belirleme
-    final sortedOutcomes = [homeWinTotal, drawTotal, awayWinTotal]..sort((a, b) => b.compareTo(a));
+    final sortedOutcomes = [fusedHomeWin, fusedDraw, fusedAwayWin]..sort((a, b) => b.compareTo(a));
     final top1 = sortedOutcomes[0];
     final top2 = sortedOutcomes[1];
-    final margin = top1 - top2; // Fark ne kadar açıksa model o kadar kararlı
+    final margin = top1 - top2;
 
-    // Örneklem güvenilirliği (takım verileri eksiksizse bonus)
     double sampleBonus = (!missingStats && !missingSquad) ? 10.0 : -10.0;
     if (h2h != null && h2h.played >= 3) sampleBonus += 5.0;
 
     double confidenceScore = math.min(95.0, math.max(40.0, 50.0 + (margin * 0.9) + sampleBonus));
     if (isHighRisk) {
-      // Şike/manipülasyon liglerinde aşırı güven engellenir, maksimum %75 tavanı
       confidenceScore = math.min(75.0, confidenceScore - 5.0);
     }
     confidenceScore = round1(confidenceScore);
@@ -467,9 +499,70 @@ class PoissonEngine {
       riskLevel = 'Dengeli Karşılaşma';
     }
 
+    // 8. Akıllı Çoklu Bahis Tercihleri
+    String primaryPick;
+    double primaryPickConfidence;
+    if (fusedHomeWin >= 56.0) {
+      primaryPick = 'MS 1 (Ev Sahibi)';
+      primaryPickConfidence = fusedHomeWin;
+    } else if (fusedAwayWin >= 50.0) {
+      primaryPick = 'MS 2 (Deplasman)';
+      primaryPickConfidence = fusedAwayWin;
+    } else if (fusedOver25 >= 60.0) {
+      primaryPick = '2.5 Gol ÜST';
+      primaryPickConfidence = fusedOver25;
+    } else if (fusedOver25 <= 40.0) {
+      primaryPick = '2.5 Gol ALT';
+      primaryPickConfidence = 100.0 - fusedOver25;
+    } else if (bttsTotal >= 60.0) {
+      primaryPick = 'Karşılıklı Gol VAR';
+      primaryPickConfidence = bttsTotal;
+    } else if (fusedHomeWin >= 44.0) {
+      primaryPick = '1X Çifte Şans';
+      primaryPickConfidence = math.min(92.0, fusedHomeWin + fusedDraw);
+    } else {
+      primaryPick = '1.5 Gol ÜST';
+      primaryPickConfidence = math.min(88.0, fusedOver25 + 25.0);
+    }
+
+    final secondaryPick = fusedOver25 >= 52.0
+        ? '2.5 ÜST (%${fusedOver25.toStringAsFixed(0)})'
+        : '2.5 ALT (%${(100.0 - fusedOver25).toStringAsFixed(0)})';
+
+    final safetyPick = fusedHomeWin >= fusedAwayWin
+        ? '1X Çifte Şans (%${math.min(98.0, fusedHomeWin + fusedDraw).toStringAsFixed(0)})'
+        : 'X2 Çifte Şans (%${math.min(98.0, fusedAwayWin + fusedDraw).toStringAsFixed(0)})';
+
+    // Model Beklenti Değeri (EV) ve Değerli Bahis Kontrolü
+    double maxEv = 1.0;
+    if (marketOdds != null) {
+      final evHome = (fusedHomeWin / 100.0) * marketOdds.homeOdd;
+      final evDraw = (fusedDraw / 100.0) * marketOdds.drawOdd;
+      final evAway = (fusedAwayWin / 100.0) * marketOdds.awayOdd;
+      maxEv = [evHome, evDraw, evAway].reduce(math.max);
+    }
+    final isValueBet = maxEv >= 1.05;
+
+    // 9. Özel Pazarlar: Kart & Korner Tahmin Motoru
+    final cardCorner = SpecializedMarketsEngine.calculateCardsAndCorners(
+      homeTeam: homeTeam,
+      awayTeam: awayTeam,
+      referee: refStat,
+    );
+
+    // 10. Kabus Rakip (Bogey Team) ve Ters Eşleşme Analizi
+    final bogey = SpecializedMarketsEngine.detectBogeyTeam(
+      homeTeam: homeTeam,
+      awayTeam: awayTeam,
+      h2h: h2h,
+      homeElo: effectiveHomeElo,
+      awayElo: effectiveAwayElo,
+    );
+    if (bogey.hasBogeyEffect) {
+      rationale.add(bogey.description);
+    }
+
     return PredictionResult(
-      // Aynı maç tekrar tahmin edilirse geçmişte kopya oluşmaması için
-      // fikstür kimliği varsa sabit bir id kullanılır.
       id: fixtureId != null
           ? 'fixture_$fixtureId'
           : DateTime.now().millisecondsSinceEpoch.toString(),
@@ -481,10 +574,10 @@ class PoissonEngine {
       predictedAwayGoals: primaryScore.awayGoals,
       lambdaHome: lambdaHome,
       lambdaAway: lambdaAway,
-      homeWinProbability: round1(homeWinTotal),
-      drawProbability: round1(drawTotal),
-      awayWinProbability: round1(awayWinTotal),
-      over25Probability: round1(over25Total),
+      homeWinProbability: round1(fusedHomeWin),
+      drawProbability: round1(fusedDraw),
+      awayWinProbability: round1(fusedAwayWin),
+      over25Probability: round1(fusedOver25),
       bothTeamsToScoreProbability: round1(bttsTotal),
       scoreMatrix: scoreMatrix,
       dixonColesRho: effectiveRho,
@@ -506,6 +599,14 @@ class PoissonEngine {
       eloDifference: eloDiff,
       homeXg: homeXg,
       awayXg: awayXg,
+      primaryPick: primaryPick,
+      primaryPickConfidence: round1(primaryPickConfidence),
+      secondaryPick: secondaryPick,
+      safetyPick: safetyPick,
+      expectedValue: round1(maxEv),
+      isValueBet: isValueBet,
+      cardCornerPrediction: cardCorner,
+      bogeyAnalysis: bogey,
     );
   }
 
