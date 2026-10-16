@@ -1,8 +1,8 @@
 /// Uygulama sürüm ve derleme sabitleri
 class AppVersion {
-  static const String version = '1.0.4';
-  static const int buildNumber = 5;
-  static final DateTime buildDate = DateTime(2026, 9, 25, 13, 0);
+  static const String version = '1.0.5';
+  static const int buildNumber = 6;
+  static final DateTime buildDate = DateTime(2026, 10, 16, 12, 20);
 
   /// Sürüm dizgilerini karşılaştırır (örn: "v1.0.2" ile "1.0.1")
   /// v1 > v2 ise pozitif, v1 < v2 ise negatif, eşitse 0 döner.

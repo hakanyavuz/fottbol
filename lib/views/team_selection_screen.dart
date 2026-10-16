@@ -266,10 +266,10 @@ class _CountryFilterList extends StatelessWidget {
                   width: 70,
                   margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withOpacity(0.2) : Theme.of(context).cardColor,
+                    color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withOpacity(0.2)),
-                    boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 8)] : null,
+                    border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.2)),
+                    boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 8)] : null,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -323,9 +323,9 @@ class _QuickActionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.2)),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +355,7 @@ class _StickyBottomActions extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))],
       ),
       child: Row(
         children: [
@@ -432,7 +432,7 @@ class _SelectedMatchupHeader extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -470,7 +470,7 @@ class _SelectedTeamInfo extends StatelessWidget {
           const SizedBox(height: 12),
           CircleAvatar(
             radius: 28,
-            backgroundColor: Colors.white.withOpacity(0.05),
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
             child: team != null
                 ? Text(team!.initial, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))
                 : const Icon(Icons.add, color: Colors.white38),
@@ -516,7 +516,7 @@ class _TeamListTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -526,7 +526,7 @@ class _TeamListTile extends StatelessWidget {
               // Sol: Takım Logosu/Harfi
               Container(
                 width: 60,
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 child: Center(
                   child: team.crestUrl.isNotEmpty
                       ? Image.network(team.crestUrl, width: 32, height: 32, errorBuilder: (_, __, ___) => Text(team.initial, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))
@@ -598,7 +598,7 @@ class _ActionButton extends StatelessWidget {
         width: 45,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
         ),
         child: Text(
           label,

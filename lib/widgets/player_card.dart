@@ -28,7 +28,7 @@ class PlayerCard extends StatelessWidget {
           children: [
             // Pozisyon İkonu / Rozeti
             CircleAvatar(
-              backgroundColor: _getPositionColor(player.position).withOpacity(0.15),
+              backgroundColor: _getPositionColor(player.position).withValues(alpha: 0.15),
               child: Text(
                 player.position.isNotEmpty ? player.position.substring(0, 1) : '?',
                 style: TextStyle(
@@ -60,7 +60,7 @@ class PlayerCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.lossRed.withOpacity(0.2),
+                            color: AppColors.lossRed.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(color: AppColors.lossRed, width: 0.8),
                           ),
@@ -112,7 +112,7 @@ class PlayerCard extends StatelessWidget {
                   : (player.isInjured ? 'Sakatlığı Kaldır' : 'Sakat Olarak İşaretle'),
               icon: Icon(
                 player.isInjured ? Icons.medical_services : Icons.medical_services_outlined,
-                color: player.isInjured ? AppColors.lossRed : theme.colorScheme.onSurface.withOpacity(0.4),
+                color: player.isInjured ? AppColors.lossRed : theme.colorScheme.onSurface.withValues(alpha: 0.4),
               ),
               onPressed: onToggleInjury,
             ),
@@ -154,7 +154,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
@@ -164,7 +164,7 @@ class _StatChip extends StatelessWidget {
             '$label: ',
             style: TextStyle(
               fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           Text(

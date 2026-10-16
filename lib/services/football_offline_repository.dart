@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import '../models/match_event.dart';
 import '../models/lineup.dart';
 import '../models/api_team.dart';
@@ -8,6 +9,7 @@ import '../models/match_stat.dart';
 import '../models/player.dart';
 import '../models/sport_type.dart';
 import '../models/team.dart';
+import 'club_elo_service.dart';
 
 /// Tüm dünya ligleri, takımları, gerçek fikstür eşleşmeleri ve gerçekçi sezon verileri deposu.
 ///
@@ -1396,30 +1398,133 @@ class FootballOfflineRepository {
       );
     }
 
-    // 2. Dünya Devleri
-    final isElite = [50, 42, 40, 541, 529, 157, 505, 85].contains(teamId);
-    if (isElite || lower.contains('city') || lower.contains('madrid') || lower.contains('bayern') || lower.contains('barcelona') || lower.contains('liverpool') || lower.contains('arsenal') || lower.contains('psg') || lower.contains('inter')) {
-      return const MatchStat(
-        played: 28, won: 22, drawn: 4, lost: 2,
-        goalsScored: 72, goalsConceded: 22,
-        homePlayed: 14, homeWon: 12, homeDrawn: 2, homeLost: 0, homeGoalsScored: 45, homeGoalsConceded: 11,
-        awayPlayed: 14, awayWon: 10, awayDrawn: 2, awayLost: 2, awayGoalsScored: 27, awayGoalsConceded: 11,
-        avgPossession: 63.5, avgShotsPerGame: 17.0, avgShotsOnTarget: 6.8, cleanSheets: 14,
-        recentForm: ['W', 'W', 'W', 'D', 'W'],
-      );
+    // 2. Avrupa Kulüpleri ve Dünya Ligleri İçin Elo + Taktiksel DNA Tabanlı Özgün İstatistik Motoru
+    return _buildDynamicClubStats(teamId, name, leagueName);
+  }
+
+  static MatchStat _buildDynamicClubStats(int teamId, String name, [String? leagueName]) {
+    final lower = name.toLowerCase().trim();
+    final double elo = ClubEloService.getTeamElo(name);
+
+    // Takıma özgü deterministik tohum (Taktiksel stil: hücumcu vs savunmacı, iç saha vs deplasman karakteri)
+    int seed = teamId * 37;
+    for (int i = 0; i < lower.length; i++) {
+      seed = ((seed * 31) + lower.codeUnitAt(i)) & 0x7fffffff;
     }
 
-    // 3. Genel Dengeli Orta Sıra İstatistiği (Doğal varyasyonlu)
-    final int hash = (teamId * 31 + name.length) % 7;
+    // Kulübün bulunduğu ligin ortalama Elo tabanını belirle
+    double leagueBaseElo = 1750.0;
+    final lLower = (leagueName ?? '').toLowerCase();
+    if (lLower.contains('turkey') || lLower.contains('süper') || lLower.contains('1. lig') || elo < 1580) {
+      leagueBaseElo = 1480.0;
+    } else if (lLower.contains('championship') || lLower.contains('segunda') || lLower.contains('serie b') ||
+               lLower.contains('eredivisie') || lLower.contains('portugal') || (elo >= 1580 && elo < 1710)) {
+      leagueBaseElo = 1680.0;
+    }
+
+    // Lig ortalamasına göre güç farkı (-220 ile +280 arası)
+    final double relElo = (elo - leagueBaseElo).clamp(-220.0, 280.0);
+    // [-1.0, +1.25] aralığında normalize edilmiş kalite katsayısı
+    final double quality = relElo / 220.0;
+
+    // Taktiksel karakter: Hücum odaklı takımlar (Barcelona, Bayern, Tottenham, Atalanta, Leverkusen, PSV vb.)
+    // vs Kompakt savunma takımları (Atletico Madrid, Inter, Juventus, Getafe, Torino vb.)
+    double attackStyle = ((seed % 19) - 9) * 0.028; // -0.25 .. +0.25
+    double defenseTightness = (((seed ~/ 7) % 19) - 9) * 0.025; // Pozitifse daha az gol yer
+
+    if (lower.contains('barcelona') || lower.contains('bayern') || lower.contains('tottenham') ||
+        lower.contains('atalanta') || lower.contains('leverkusen') || lower.contains('psv') ||
+        lower.contains('dortmund') || lower.contains('brighton') || lower.contains('girona')) {
+      attackStyle += 0.22;
+      defenseTightness -= 0.06;
+    } else if (lower.contains('atletico') || lower.contains('juventus') || lower.contains('inter') ||
+               lower.contains('arsenal') || lower.contains('napoli') || lower.contains('getafe') ||
+               lower.contains('torino') || lower.contains('mallorca') || lower.contains('lazio')) {
+      defenseTightness += 0.20;
+    }
+
+    const int homePlayed = 13;
+    const int awayPlayed = 13;
+    const int played = homePlayed + awayPlayed; // 26 maç
+
+    // Maç başı gol beklentileri (her takım için benzersiz)
+    final double homeGpg = (1.52 + (quality * 0.72) + attackStyle).clamp(0.75, 2.95);
+    final double awayGpg = (1.18 + (quality * 0.58) + (attackStyle * 0.85)).clamp(0.55, 2.45);
+    final double homeConcededPg = (1.15 - (quality * 0.44) - defenseTightness).clamp(0.45, 2.15);
+    final double awayConcededPg = (1.48 - (quality * 0.48) - defenseTightness).clamp(0.65, 2.55);
+
+    final int homeGoalsScored = (homeGpg * homePlayed).round();
+    final int awayGoalsScored = (awayGpg * awayPlayed).round();
+    final int homeGoalsConceded = (homeConcededPg * homePlayed).round();
+    final int awayGoalsConceded = (awayConcededPg * awayPlayed).round();
+
+    // Galibiyet / Beraberlik / Mağlubiyet dağılımı
+    final double homeWinRate = (0.48 + (quality * 0.26) + (attackStyle * 0.12) + (defenseTightness * 0.12)).clamp(0.15, 0.88);
+    final double awayWinRate = (0.32 + (quality * 0.24) + (attackStyle * 0.10) + (defenseTightness * 0.10)).clamp(0.08, 0.76);
+    final double drawRate = (0.24 - (quality.abs() * 0.05) + (((seed % 5) - 2) * 0.015)).clamp(0.12, 0.34);
+
+    final int homeWon = (homePlayed * homeWinRate).round().clamp(1, homePlayed);
+    final int homeDrawn = math.min(homePlayed - homeWon, (homePlayed * drawRate).round().clamp(0, 6));
+    final int homeLost = math.max(0, homePlayed - homeWon - homeDrawn);
+
+    final int awayWon = (awayPlayed * awayWinRate).round().clamp(0, awayPlayed);
+    final int awayDrawn = math.min(awayPlayed - awayWon, (awayPlayed * (drawRate + 0.03)).round().clamp(0, 6));
+    final int awayLost = math.max(0, awayPlayed - awayWon - awayDrawn);
+
+    final int won = homeWon + awayWon;
+    final int drawn = homeDrawn + awayDrawn;
+    final int lost = homeLost + awayLost;
+
+    // Topla oynama, şut, isabetli şut ve gol yemeden bitirilen maçlar
+    final double avgPossession = double.parse((50.0 + (quality * 10.5) + (attackStyle * 8.0)).clamp(37.5, 67.5).toStringAsFixed(1));
+    final double avgShots = double.parse((12.4 + (quality * 3.6) + (attackStyle * 3.2)).clamp(8.4, 18.8).toStringAsFixed(1));
+    final double shotAcc = (0.34 + (quality * 0.04) + (((seed % 7) - 3) * 0.008)).clamp(0.28, 0.43);
+    final double avgTarget = double.parse((avgShots * shotAcc).clamp(2.6, 7.6).toStringAsFixed(1));
+    final int cleanSheets = ((played * (0.28 + (quality * 0.14) + (defenseTightness * 0.18))).round()).clamp(1, 16);
+
+    // Son 5 maç formu: Her takımın gerçek gücüne ve tohumuna göre özgün dizilim
+    final double overallWinProb = won / played;
+    final double overallDrawProb = drawn / played;
+    final List<String> recentForm = [];
+    for (int i = 0; i < 5; i++) {
+      // [0.0, 1.0) arasında deterministik ama maç sırasına göre değişen kesir
+      final double r = (((seed + (i + 1) * 193) * 2654435761) & 0x7fffffff) % 1000 / 1000.0;
+      if (r < overallWinProb) {
+        recentForm.add('W');
+      } else if (r < overallWinProb + overallDrawProb) {
+        recentForm.add('D');
+      } else {
+        recentForm.add('L');
+      }
+    }
+
     return MatchStat(
-      played: 24, won: 8 + hash % 3, drawn: 6 + hash % 2, lost: 10 - hash % 3,
-      goalsScored: 28 + hash * 2, goalsConceded: 32 + hash * 2,
-      homePlayed: 12, homeWon: 5 + hash % 2, homeDrawn: 3, homeLost: 4, homeGoalsScored: 16 + hash, homeGoalsConceded: 14 + hash % 2,
-      awayPlayed: 12, awayWon: 3 + hash % 2, awayDrawn: 3, awayLost: 6, awayGoalsScored: 12 + hash, awayGoalsConceded: 18 + hash,
-      avgPossession: 47.0 + hash, avgShotsPerGame: 11.5 + (hash * 0.4), avgShotsOnTarget: 3.8 + (hash * 0.2), cleanSheets: 5 + hash % 3,
-      recentForm: ['W', 'L', 'D', 'W', 'L'],
+      played: played,
+      won: won,
+      drawn: drawn,
+      lost: lost,
+      goalsScored: homeGoalsScored + awayGoalsScored,
+      goalsConceded: homeGoalsConceded + awayGoalsConceded,
+      homePlayed: homePlayed,
+      homeWon: homeWon,
+      homeDrawn: homeDrawn,
+      homeLost: homeLost,
+      homeGoalsScored: homeGoalsScored,
+      homeGoalsConceded: homeGoalsConceded,
+      awayPlayed: awayPlayed,
+      awayWon: awayWon,
+      awayDrawn: awayDrawn,
+      awayLost: awayLost,
+      awayGoalsScored: awayGoalsScored,
+      awayGoalsConceded: awayGoalsConceded,
+      avgPossession: avgPossession,
+      avgShotsPerGame: avgShots,
+      avgShotsOnTarget: avgTarget,
+      cleanSheets: cleanSheets,
+      recentForm: recentForm,
     );
   }
+
 
   static List<Player> getRealisticSquad(int teamId, String name) {
     final lower = name.toLowerCase();
@@ -1870,66 +1975,111 @@ class FootballOfflineRepository {
     );
   }
 
-  static HeadToHeadSummary getHeadToHead(int homeId, int awayId) {
+  static HeadToHeadSummary getHeadToHead(
+    int homeId,
+    int awayId, {
+    String? homeName,
+    String? awayName,
+  }) {
     final now = DateTime.now();
-    final fixtures = [
-      Fixture(
-        id: 9001,
-        date: DateTime(now.year - 1, 10, 15),
-        statusShort: 'FT',
-        leagueId: 0,
-        leagueName: 'Lig Karşılaşması',
-        season: now.year - 1,
-        homeTeamId: homeId,
-        homeTeamName: 'Ev Sahibi',
-        awayTeamId: awayId,
-        awayTeamName: 'Deplasman',
-        homeGoals: 2,
-        awayGoals: 1,
-      ),
-      Fixture(
-        id: 9002,
-        date: DateTime(now.year - 1, 3, 20),
-        statusShort: 'FT',
-        leagueId: 0,
-        leagueName: 'Lig Karşılaşması',
-        season: now.year - 1,
-        homeTeamId: awayId,
-        homeTeamName: 'Deplasman',
-        awayTeamId: homeId,
-        awayTeamName: 'Ev Sahibi',
-        homeGoals: 1,
-        awayGoals: 1,
-      ),
-      Fixture(
-        id: 9003,
-        date: DateTime(now.year - 2, 11, 5),
-        statusShort: 'FT',
-        leagueId: 0,
-        leagueName: 'Kupa Karşılaşması',
-        season: now.year - 2,
-        homeTeamId: homeId,
-        homeTeamName: 'Ev Sahibi',
-        awayTeamId: awayId,
-        awayTeamName: 'Deplasman',
-        homeGoals: 3,
-        awayGoals: 1,
-      ),
-      Fixture(
-        id: 9004,
-        date: DateTime(now.year - 2, 4, 12),
-        statusShort: 'FT',
-        leagueId: 0,
-        leagueName: 'Lig Karşılaşması',
-        season: now.year - 2,
-        homeTeamId: awayId,
-        homeTeamName: 'Deplasman',
-        awayTeamId: homeId,
-        awayTeamName: 'Ev Sahibi',
-        homeGoals: 2,
-        awayGoals: 2,
-      ),
-    ];
+    final hName = homeName ?? 'Ev Sahibi';
+    final aName = awayName ?? 'Deplasman';
+    final hLower = hName.toLowerCase();
+    final aLower = aName.toLowerCase();
+
+    final double hElo = ClubEloService.getTeamElo(hName);
+    final double aElo = ClubEloService.getTeamElo(aName);
+
+    // Bilinen Kabus Rakip (Bogey Team) eşleşmeleri:
+    // Beşiktaş - Kasımpaşa, Man City - Tottenham, Barcelona - Celta Vigo, Bayern - Mönchengladbach
+    final bool awayIsBogeyForHome =
+        (hLower.contains('beşiktaş') && aLower.contains('kasımpaşa')) ||
+        (hLower.contains('besiktas') && aLower.contains('kasimpasa')) ||
+        (hLower.contains('city') && aLower.contains('tottenham')) ||
+        (hLower.contains('barcelona') && aLower.contains('celta')) ||
+        (hLower.contains('bayern') && aLower.contains('mönchengladbach'));
+
+    final bool homeIsBogeyForAway =
+        (aLower.contains('beşiktaş') && hLower.contains('kasımpaşa')) ||
+        (aLower.contains('besiktas') && hLower.contains('kasimpasa')) ||
+        (aLower.contains('city') && hLower.contains('tottenham')) ||
+        (aLower.contains('barcelona') && hLower.contains('celta')) ||
+        (aLower.contains('bayern') && hLower.contains('mönchengladbach'));
+
+    // Simetrik eşleşme tohumu (A vs B ile B vs A aynı geçmiş maçları paylaşsın)
+    final int lowId = math.min(homeId, awayId);
+    final int highId = math.max(homeId, awayId);
+    int pairSeed = (lowId * 131 + highId * 977) & 0x7fffffff;
+    final sortedNames = [hLower, aLower]..sort();
+    for (final s in sortedNames) {
+      for (int i = 0; i < s.length; i++) {
+        pairSeed = ((pairSeed * 31) + s.codeUnitAt(i)) & 0x7fffffff;
+      }
+    }
+
+    // 6 geçmiş maç üret
+    final List<Fixture> fixtures = [];
+    for (int m = 0; m < 6; m++) {
+      final bool playedAtHome = m.isEven;
+      final int fHomeId = playedAtHome ? homeId : awayId;
+      final int fAwayId = playedAtHome ? awayId : homeId;
+      final String fHomeName = playedAtHome ? hName : aName;
+      final String fAwayName = playedAtHome ? aName : hName;
+
+      double expHomeGoals;
+      double expAwayGoals;
+
+      if (awayIsBogeyForHome) {
+        // Kabus rakip deplasman takımıysa (aName), hName'e karşı üstün skorlar üretir
+        expHomeGoals = playedAtHome ? 1.1 : 2.1;
+        expAwayGoals = playedAtHome ? 2.0 : 1.0;
+      } else if (homeIsBogeyForAway) {
+        expHomeGoals = playedAtHome ? 2.1 : 1.0;
+        expAwayGoals = playedAtHome ? 1.0 : 2.0;
+      } else {
+        final double eloDiff = (playedAtHome ? (hElo - aElo) : (aElo - hElo)).clamp(-350.0, 350.0);
+        expHomeGoals = (1.45 + (eloDiff / 380.0)).clamp(0.55, 2.75);
+        expAwayGoals = (1.15 - (eloDiff / 420.0)).clamp(0.45, 2.45);
+      }
+
+      final int hRoll = ((pairSeed + (m + 1) * 313) * 1103515245 & 0x7fffffff) % 100;
+      final int aRoll = ((pairSeed + (m + 1) * 619) * 1103515245 & 0x7fffffff) % 100;
+
+      int hGoals = (expHomeGoals + ((hRoll - 48) / 42.0)).round().clamp(0, 4);
+      int aGoals = (expAwayGoals + ((aRoll - 50) / 42.0)).round().clamp(0, 4);
+
+      if (awayIsBogeyForHome) {
+        // Kabus rakip son 6 maçın en az 4'ünde yenilmesin
+        if (playedAtHome && hGoals > aGoals && m < 4) {
+          aGoals = hGoals + (m.isOdd ? 1 : 0);
+        } else if (!playedAtHome && aGoals > hGoals && m < 4) {
+          hGoals = aGoals + 1;
+        }
+      } else if (homeIsBogeyForAway) {
+        if (playedAtHome && aGoals > hGoals && m < 4) {
+          hGoals = aGoals + 1;
+        } else if (!playedAtHome && hGoals > aGoals && m < 4) {
+          aGoals = hGoals + (m.isOdd ? 1 : 0);
+        }
+      }
+
+      fixtures.add(
+        Fixture(
+          id: 9000 + m,
+          date: now.subtract(Duration(days: 120 * (m + 1) + (pairSeed % 25))),
+          statusShort: 'FT',
+          leagueId: 0,
+          leagueName: m == 3 ? 'Kupa Karşılaşması' : 'Lig Karşılaşması',
+          season: now.year - ((m + 1) ~/ 2),
+          homeTeamId: fHomeId,
+          homeTeamName: fHomeName,
+          awayTeamId: fAwayId,
+          awayTeamName: fAwayName,
+          homeGoals: hGoals,
+          awayGoals: aGoals,
+        ),
+      );
+    }
 
     return HeadToHeadSummary.fromFixtures(
       fixtures,
@@ -1937,6 +2087,7 @@ class FootballOfflineRepository {
       awayTeamId: awayId,
     );
   }
+
 
   static List<TeamLineup> getOfficialLineups(int fixtureId) {
     // Sabit sahte kadro kalıntısı temizlendi.

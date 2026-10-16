@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/cache/cache_manager.dart';
 import '../core/network/api_exceptions.dart';
@@ -16,6 +17,7 @@ import '../models/odds_comparison.dart';
 import '../models/lineup.dart';
 import '../models/match_event.dart';
 import 'football_offline_repository.dart';
+import 'real_sports_live_service.dart';
 
 /// API-Football (v3.football.api-sports.io veya RapidAPI) Servis Katmanı
 ///
@@ -99,6 +101,7 @@ class ApiFootballService {
     } on ApiQuotaExceededException {
       rethrow;
     } catch (e) {
+      debugPrint('API Hata: $path - $e');
       // Ağ hatası: süresi dolmuş olsa da önbellekten kurtarmayı dene
       final stale = CacheManager.getStale(cacheKey);
       if (stale != null) return stale;
@@ -383,27 +386,37 @@ class ApiFootballService {
   Future<HeadToHeadSummary?> getHeadToHead({
     required int homeTeamId,
     required int awayTeamId,
+    String? homeTeamName,
+    String? awayTeamName,
     int last = 10,
   }) async {
     final low = homeTeamId < awayTeamId ? homeTeamId : awayTeamId;
     final high = homeTeamId < awayTeamId ? awayTeamId : homeTeamId;
 
-    final data = await _fetch(
-      '/fixtures/headtohead',
-      {'h2h': '$homeTeamId-$awayTeamId', 'last': last.toString()},
-      cacheKey: 'h2h_${low}_${high}_$last',
-    );
-    if (data != null) {
-      final summary = HeadToHeadSummary.fromFixtures(
-        _asMapList(data).map(Fixture.fromApiFootball).toList(),
-        homeTeamId: homeTeamId,
-        awayTeamId: awayTeamId,
+    if (hasKey) {
+      final data = await _fetch(
+        '/fixtures/headtohead',
+        {'h2h': '$homeTeamId-$awayTeamId', 'last': last.toString()},
+        cacheKey: 'h2h_${low}_${high}_$last',
       );
-      if (summary.hasData) return summary;
+      if (data != null) {
+        final summary = HeadToHeadSummary.fromFixtures(
+          _asMapList(data).map(Fixture.fromApiFootball).toList(),
+          homeTeamId: homeTeamId,
+          awayTeamId: awayTeamId,
+        );
+        if (summary.hasData) return summary;
+      }
     }
 
-    return FootballOfflineRepository.getHeadToHead(homeTeamId, awayTeamId);
+    return FootballOfflineRepository.getHeadToHead(
+      homeTeamId,
+      awayTeamId,
+      homeName: homeTeamName,
+      awayName: awayTeamName,
+    );
   }
+
 
   /// Maçın olaylarını (gol, kart, oyuncu değişikliği) getirir (GET /fixtures/events?fixture=)
   Future<List<MatchEvent>> getFixtureEvents(int fixtureId) async {
@@ -796,7 +809,13 @@ class ApiFootballService {
       }
     }
 
-    // Gerçek veri çekilemediğinde veya kota dolduğunda gerçekçi istatistikler ve kadro devreye girer
+    // 2. ESPN Canlı Puan Durumu (Ücretsiz & Kotasız) üzerinden gerçek sezon istatistiğini dene
+    stats ??= await RealSportsLiveService.getLiveTeamStats(
+      apiTeam.name,
+      leagueCountryOrName: leagueName,
+    );
+
+    // 3. Yine bulunamadıysa Elo + Taktiksel DNA tabanlı özgün istatistikler devreye girer
     stats ??= FootballOfflineRepository.getRealisticStats(apiTeam.id, apiTeam.name, leagueName);
     if (squad.isEmpty) {
       squad = FootballOfflineRepository.getRealisticSquad(apiTeam.id, apiTeam.name);
@@ -804,6 +823,7 @@ class ApiFootballService {
 
     return apiTeam.toTeam(leagueName: leagueName, stats: stats, squad: squad);
   }
+
 
   // ---------------------------------------------------------------------------
   // 4. Anahtarsız (çevrimdışı) demo verileri

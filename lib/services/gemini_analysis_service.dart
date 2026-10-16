@@ -1,6 +1,5 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../core/constants/api_constants.dart';
-import '../core/constants/league_constants.dart';
 import '../models/prediction_result.dart';
 
 import '../models/coupon_slip.dart';
@@ -63,28 +62,40 @@ Yanıtın kısa (maksimum 3-4 cümle), profesyonel ve ilgi çekici olsun. Türk�
         apiKey: apiKey.trim(),
       );
 
+      final home = prediction.homeTeam;
+      final away = prediction.awayTeam;
+      final homeTop = home.topScorer;
+      final awayTop = away.topScorer;
+      final ref = prediction.refereeStat;
+
       final prompt = '''
-Sen tecrübeli ve profesyonel bir futbol analisti, taktik danışmanı ve spor quant uzmanısın.
-Aşağıda hibrit Poisson modeli, canlı bülten oranları (Bayesian Konsensüs) ve Club Elo güç endeksleri ile hesaplanmış maç verileri bulunmaktadır. Bu verileri yorumlayarak Türkçe, sürükleyici, analitik ve taktiksel derinliği olan bir maç analizi yaz.
+[Proje Bağlamı - Sabit Kurallar]
+Flutter proje: FOTTBOL Quant Futbol Tahmin Uygulaması
+Temel Kurallar:
+1. Tüm olasılık, Elo, son 5/10 maç formu, iç saha/deplasman puan ortalaması (PPG), H2H ve kadro güç kaybı hesaplamaları Dart kodunda deterministik olarak tamamlanmıştır.
+2. ASLA kendi başına olasılık, tarih, puan veya istatistik hesaplama! Sadece aşağıda sağlanan kesin Dart verilerini yorumla.
 
-MAÇ VE MOTOR BİLGİLERİ:
-- Karşılaşma: ${prediction.homeTeam.name} (Ev Sahibi) vs ${prediction.awayTeam.name} (Deplasman)
-- Club Elo Güçleri: ${prediction.homeTeam.name}: ${prediction.homeElo?.toInt() ?? "1500"} Elo | ${prediction.awayTeam.name}: ${prediction.awayElo?.toInt() ?? "1500"} Elo (Fark: ${prediction.eloDifference != null ? prediction.eloDifference!.toStringAsFixed(0) : "0"})
-- Algoritmanın Tahmin Ettiği Skor: ${prediction.predictedScoreString}
-- Beklenen Goller (xG): ${prediction.homeTeam.name}: ${prediction.lambdaHome.toStringAsFixed(2)} | ${prediction.awayTeam.name}: ${prediction.lambdaAway.toStringAsFixed(2)}
-- Bayesian Olasılık Dağılımı: Ev: %${prediction.homeWinProbability} | Beraberlik: %${prediction.drawProbability} | Deplasman: %${prediction.awayWinProbability}
-- 2.5 Gol Üstü İhtimali: %${prediction.over25Probability} | KG Var: %${prediction.bothTeamsToScoreProbability}
-- 🎯 Modelin Banko Tercihi: ${prediction.primaryPick} (Güven: %${prediction.primaryPickConfidence})
-- ⚽ Gol Pazarı Önerisi: ${prediction.secondaryPick}
-- 🛡️ Sigorta Tercihi: ${prediction.safetyPick}
-- 💰 Değerli Bahis (Value Bet) Durumu: ${prediction.isValueBet ? "EV Avantajı Var (Beklenen Değer: ${prediction.expectedValue})" : "Normal Oran Dengesi (EV: ${prediction.expectedValue})"}
-- Ev Sahibi Sakatlıklar: ${prediction.homeTeam.injuredPlayers.isEmpty ? 'Eksik yok' : prediction.homeTeam.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')}
-- Deplasman Sakatlıklar: ${prediction.awayTeam.injuredPlayers.isEmpty ? 'Eksik yok' : prediction.awayTeam.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')}
+[Sağlanan Veri (Dart Motoru Çıktısı)]
+- Karşılaşma: ${home.name} (Ev Sahibi) vs ${away.name} (Deplasman)
+- Club Elo Güçleri: ${home.name}: ${prediction.homeElo?.toInt() ?? 1500} Elo | ${away.name}: ${prediction.awayElo?.toInt() ?? 1500} Elo (Fark: ${prediction.eloDifference != null ? prediction.eloDifference!.toStringAsFixed(0) : "0"})
+- İç Saha / Deplasman Puan Ortalaması (PPG): ${home.name} İç Saha: ${home.stats.homePointsPerGame.toStringAsFixed(2)} PPG (Son 5 İç Saha: ${home.stats.effectiveHomeForm.join('-')}) | ${away.name} Deplasman: ${away.stats.awayPointsPerGame.toStringAsFixed(2)} PPG (Son 5 Deplasman: ${away.stats.effectiveAwayForm.join('-')})
+- Son 10 Maç Genel Form: ${home.name}: ${home.stats.effectiveLast10Form.join('-')} (${home.stats.overallPointsPerGame.toStringAsFixed(2)} PPG) | ${away.name}: ${away.stats.effectiveLast10Form.join('-')} (${away.stats.overallPointsPerGame.toStringAsFixed(2)} PPG)
+- Gol Ortalamaları: ${home.name} Evde Attığı: ${home.stats.avgHomeGoalsScored.toStringAsFixed(2)}, Yediği: ${home.stats.avgHomeGoalsConceded.toStringAsFixed(2)} | ${away.name} Deplasmanda Attığı: ${away.stats.avgAwayGoalsScored.toStringAsFixed(2)}, Yediği: ${away.stats.avgAwayGoalsConceded.toStringAsFixed(2)}
+- Yıldız Oyuncu Düellosu: ${home.name}: ${homeTop != null ? '${homeTop.name} (${homeTop.goals}G/${homeTop.assists}A, Reyting ${homeTop.rating.toStringAsFixed(1)})' : 'Standart'} vs ${away.name}: ${awayTop != null ? '${awayTop.name} (${awayTop.goals}G/${awayTop.assists}A, Reyting ${awayTop.rating.toStringAsFixed(1)})' : 'Standart'}
+- Sakat / Cezalı Etkisi: ${home.name} (-%${home.attackAvailabilityLossPercent.toStringAsFixed(1)} güç kaybı): ${home.injuredPlayers.isEmpty ? 'Tam kadro' : home.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')} | ${away.name} (-%${away.attackAvailabilityLossPercent.toStringAsFixed(1)} güç kaybı): ${away.injuredPlayers.isEmpty ? 'Tam kadro' : away.injuredPlayers.map((p) => '${p.name} (${p.position})').join(', ')}
+- Hakem & Disiplin: ${ref != null ? '${ref.name} (${ref.strictnessRating}, Ort. ${ref.avgYellowCards} Sarı, %${(ref.avgPenalties * 100).toInt()} Penaltı)' : 'Standart Hakem'}
+- H2H & Ters Takım: ${prediction.bogeyAnalysis?.hasBogeyEffect == true ? '⚠️ TERS TAKIM UYARISI (${prediction.bogeyAnalysis!.description})' : 'Normal H2H dengesi'}
+- Algoritmanın Tahmin Ettiği Skor: ${prediction.predictedScoreString} (xG: ${home.name} ${prediction.lambdaHome.toStringAsFixed(2)} - ${away.name} ${prediction.lambdaAway.toStringAsFixed(2)})
+- Olasılık Dağılımı: Ev: %${prediction.homeWinProbability.toStringAsFixed(1)} | Beraberlik: %${prediction.drawProbability.toStringAsFixed(1)} | Deplasman: %${prediction.awayWinProbability.toStringAsFixed(1)}
+- 2.5 Gol Üstü: %${prediction.over25Probability.toStringAsFixed(1)} | KG Var: %${prediction.bothTeamsToScoreProbability.toStringAsFixed(1)}
+- 🎯 Modelin Banko Tercihi: ${prediction.primaryPick} (Güven: %${prediction.primaryPickConfidence.toStringAsFixed(1)}) | ⚽ Gol Pazarı: ${prediction.secondaryPick} | 🛡️ Sigorta: ${prediction.safetyPick}
+- 💰 Değerli Bahis (Value Bet): ${prediction.isValueBet ? "EV Avantajı Var (EV: ${prediction.expectedValue.toStringAsFixed(2)})" : "Normal Oran Dengesi (EV: ${prediction.expectedValue.toStringAsFixed(2)})"}
 
-Lütfen yanıtında şu 3 ana başlığı kullan ve samimi, net, uzman bir spor yorumcusu üslubuyla açıkla:
-1. ⚽ Saha İçi Senaryosu & Taktiksel Kurgu
-2. ⚠️ Kilit Eşleşme & Kadro/Elo Güç Dengesi
-3. 🎯 Bahis Karnesi Denetimi & Model Kararı (Banko, Gol Pazarı ve Value Bet tavsiyesini taktiksel olarak onayla veya uyar)
+[Görev]
+Yukarıdaki hazır Dart hesaplamalarına dayanarak şu 3 ana başlıkta Türkçe, net ve analitik bir maç raporu yaz:
+1. ⚽ Saha İçi Senaryosu, Son 5/10 Maç Formu & Deplasman Karnesi
+2. 🌟 Yıldız Oyuncu Düellosu, Eksikler, Hakem & H2H Etkisi
+3. 🎯 Bahis Karnesi Denetimi & Model Kararı
 ''';
 
       final response = await model.generateContent([Content.text(prompt)]);
@@ -112,35 +123,49 @@ Lütfen yanıtında şu 3 ana başlığı kullan ve samimi, net, uzman bir spor 
     if (home.injuredCount > 0 || away.injuredCount > 0) {
       injuryNote = 'Kadro eksiklikleri açısından bakıldığında ';
       if (home.injuredCount > 0) {
-        injuryNote += '${home.name} cephesindeki ${home.injuredCount} eksik, ev sahibinin baskısını kırabilir. ';
+        final lossPct = home.attackAvailabilityLossPercent.toStringAsFixed(1);
+        injuryNote += '${home.name} cephesindeki ${home.injuredCount} eksik (-%$lossPct güç kaybı) ev sahibinin baskısını kırabilir. ';
       }
       if (away.injuredCount > 0) {
-        injuryNote += '${away.name} takımında ${away.injuredCount} sakat oyuncunun bulunması deplasmanda savunma direncini düşürebilir.';
+        final lossPct = away.attackAvailabilityLossPercent.toStringAsFixed(1);
+        injuryNote += '${away.name} takımında ${away.injuredCount} eksik (-%$lossPct güç kaybı) deplasmanda direnci düşürebilir.';
       }
     } else {
-      injuryNote = 'Her iki takım da sahaya tam kadro çıkmaya yakın, taktiksel disiplin son düdüğe kadar korunacaktır.';
+      injuryNote = 'Her iki takım da sahaya tam kadroya yakın çıkıyor; taktiksel disiplin son düdüğe kadar korunacaktır.';
     }
 
     String eloNote = '';
-    if (p.eloDifference != null && p.eloDifference!.abs() >= 80) {
+    if (p.eloDifference != null && p.eloDifference!.abs() >= 60) {
       eloNote = p.eloDifference! > 0
-          ? 'Elo derecelendirmesinde ${home.name} rakibinden +${p.eloDifference!.toStringAsFixed(0)} puan üstün; kalite farkı sahaya yansıyabilir.'
-          : 'Elo derecelendirmesinde ${away.name} rakibinden +${(-p.eloDifference!).toStringAsFixed(0)} puan üstün; deplasmanda belirgin bir siklet farkı var.';
+          ? 'Elo derecelendirmesinde ${home.name} rakibinden +${p.eloDifference!.toStringAsFixed(0)} puan üstün (${p.homeElo?.toInt()} vs ${p.awayElo?.toInt()}).'
+          : 'Elo derecelendirmesinde ${away.name} rakibinden +${(-p.eloDifference!).toStringAsFixed(0)} puan üstün (${p.awayElo?.toInt()} vs ${p.homeElo?.toInt()}).';
     }
 
+    final starNote = (home.topScorer != null && away.topScorer != null)
+        ? 'Yıldız düellosunda ${home.topScorer!.name} (${home.topScorer!.goals}G/${home.topScorer!.assists}A) ile ${away.topScorer!.name} (${away.topScorer!.goals}G/${away.topScorer!.assists}A) karşı karşıya geliyor.'
+        : (home.topScorer != null ? 'Ev sahibinde ${home.topScorer!.name} (${home.topScorer!.goals} gol) kilit tehdit oluşturuyor.' : '');
+
+    final refNote = p.refereeStat != null
+        ? 'Maçın hakemi ${p.refereeStat!.name} (${p.refereeStat!.strictnessRating}, maç başı ${p.refereeStat!.avgYellowCards} sarı kart).'
+        : '';
+
+    final bogeyNote = p.bogeyAnalysis?.hasBogeyEffect == true
+        ? '\n• ⚠️ Ters Takım (H2H) Uyarısı: ${p.bogeyAnalysis!.description}'
+        : '';
+
     final valueNote = p.isValueBet
-        ? '💰 Quant Değerli Bahis Radarı: Büroların oranları ile model olasılıkları arasında pozitif katsayı (+%${((p.expectedValue - 1.0) * 100).toStringAsFixed(1)} EV) tespit edildi.'
-        : '📊 Oran Dengesi: Büroların canlı oranları ile olasılık modeli makul bir dengede seyrediyor.';
+        ? '💰 Quant Değerli Bahis Radarı: Piyasa oranları ile model olasılıkları arasında pozitif beklenen değer (+%${((p.expectedValue - 1.0) * 100).toStringAsFixed(1)} EV) tespit edildi.'
+        : '📊 Oran Dengesi: Piyasa oranları ile olasılık modeli dengeli seyrediyor.';
 
     return '''
-1. ⚽ Saha İçi Senaryosu & Taktiksel Kurgu:
-${home.name}, seyircisi önünde iç saha hücum gücü (%${(home.stats.avgHomeGoalsScored / LeagueConstants.avgHomeGoals * 100).toStringAsFixed(0)}) ile maça baskılı başlamayı hedefleyecektir. ${away.name} ise kontra ataklarla geçiş hücumları arayacaktır. $tempo $eloNote
+1. ⚽ Saha İçi Senaryosu, Son 5/10 Form & Deplasman Karnesi:
+${home.name}, iç sahada maç başı ${home.stats.homePointsPerGame.toStringAsFixed(2)} puan ortalaması (Son 5 İç Saha: ${home.stats.effectiveHomeForm.join('-')}) ve ${home.stats.avgHomeGoalsScored.toStringAsFixed(2)} gol ortalaması ile oynuyor. ${away.name} ise deplasmanda ${away.stats.awayPointsPerGame.toStringAsFixed(2)} puan ortalaması (Son 5 Deplasman: ${away.stats.effectiveAwayForm.join('-')}) ve ${away.stats.avgAwayGoalsScored.toStringAsFixed(2)} gol üretimi sergiliyor. $tempo $eloNote
 
-2. ⚠️ Kilit Eşleşme & Sakatlıkların Belirleyici Etkisi:
-$injuryNote ${home.topScorer != null ? 'Ev sahibinde ${home.topScorer!.name} (${home.topScorer!.goals} gol) kilit tehdit oluşturuyor.' : ''}
+2. 🌟 Yıldız Düellosu, Eksikler & Hakem Etkisi:
+$starNote $injuryNote $refNote$bogeyNote
 
 3. 🎯 Bahis Karnesi Denetimi & Model Kararı:
-• Banko Tercih: ${p.primaryPick} (Güven: %${p.primaryPickConfidence})
+• Banko Tercih: ${p.primaryPick} (Güven: %${p.primaryPickConfidence.toStringAsFixed(1)})
 • Gol Pazarı: ${p.secondaryPick}
 • Sigorta Çifte Şans: ${p.safetyPick}
 • Öngörülen Skor: ${p.predictedScoreString} (xG: ${p.lambdaHome.toStringAsFixed(2)} - ${p.lambdaAway.toStringAsFixed(2)})

@@ -54,7 +54,7 @@ class _HomeNavScreenState extends State<HomeNavScreen> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        indicatorColor: AppColors.primary.withOpacity(0.2),
+        indicatorColor: AppColors.primary.withValues(alpha: 0.2),
         onDestinationSelected: (index) {
           setState(() {
             _currentIndex = index;

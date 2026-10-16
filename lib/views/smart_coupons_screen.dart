@@ -820,7 +820,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.deepOrange.withOpacity(0.2),
+                        color: Colors.deepOrange.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('🏐 VOLEYBOL PROJEKSİYONU', style: TextStyle(color: Colors.deepOrangeAccent, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -847,7 +847,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
+                    color: Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.white12),
                   ),
@@ -896,7 +896,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isMostLikely ? AppColors.primary.withOpacity(0.18) : Colors.white.withOpacity(0.04),
+                        color: isMostLikely ? AppColors.primary.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: isMostLikely ? AppColors.primary : Colors.white10,
@@ -934,7 +934,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
+                    color: Colors.white.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white10),
                   ),
@@ -1070,7 +1070,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.2),
+                        color: Colors.orange.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text('🏀 BASKETBOL QUANT PROJEKSİYONU', style: TextStyle(color: Colors.orangeAccent, fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1097,7 +1097,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.04),
+                    color: Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.white12),
                   ),
@@ -1155,7 +1155,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
+                    color: Colors.white.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.white10),
                   ),
@@ -1248,7 +1248,7 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white10),
       ),
@@ -1664,7 +1664,7 @@ class _MultiSportFixtureCard extends StatelessWidget {
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.blueGrey.withOpacity(0.1),
+                        color: Colors.blueGrey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1707,9 +1707,9 @@ class _MultiSportFixtureCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: fixture.isFinished ? Colors.green.withOpacity(0.1) : Colors.grey.withValues(alpha: 0.15),
+                        color: fixture.isFinished ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
-                        border: fixture.isFinished ? Border.all(color: Colors.green.withOpacity(0.3)) : null,
+                        border: fixture.isFinished ? Border.all(color: Colors.green.withValues(alpha: 0.3)) : null,
                       ),
                       child: Text(
                         fixture.isFinished || fixture.isLive

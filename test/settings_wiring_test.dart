@@ -65,7 +65,7 @@ void main() {
 
   testWidgets('Ayarlar ekranı veri ve geçmiş yönetimi seçeneklerini gösterir', (tester) async {
     await tester.pumpWidget(wrap(const SettingsScreen()));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('Tahmin Geçmişini'), findsWidgets);
     expect(find.textContaining('Önbelleği Temizle'), findsOneWidget);
@@ -73,7 +73,7 @@ void main() {
 
   testWidgets('Global takım arama ekranı 3 harf ipucunu gösterir', (tester) async {
     await tester.pumpWidget(wrap(const GlobalTeamSearchScreen()));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('en az 3 harf'), findsOneWidget);
   });
@@ -89,7 +89,7 @@ void main() {
     );
 
     await tester.pumpWidget(wrap(TeamListScreen(league: league, season: 2026)));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     // Varsayılan Maçlar sekmesi açık
     expect(find.text('Yaklaşan'), findsOneWidget);

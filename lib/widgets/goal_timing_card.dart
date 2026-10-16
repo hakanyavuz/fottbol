@@ -41,7 +41,7 @@ class GoalTimingCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.15),
+                  color: Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.timer_outlined, color: Colors.amber, size: 20),
@@ -69,9 +69,9 @@ class GoalTimingCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -150,9 +150,9 @@ class GoalTimingCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -166,7 +166,7 @@ class GoalTimingCard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontSize: 9,
-                    color: color.withOpacity(0.8),
+                    color: color.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -216,7 +216,7 @@ class GoalTimingCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   height: 14,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: barFactor,

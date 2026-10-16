@@ -30,7 +30,7 @@ class TeamStatsScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundColor: Colors.blueGrey.withOpacity(0.2),
+                      backgroundColor: Colors.blueGrey.withValues(alpha: 0.2),
                       child: Text(
                         team.initial,
                         style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
@@ -123,7 +123,7 @@ class TeamStatsScreen extends StatelessWidget {
                 // İç Saha
                 Expanded(
                   child: Card(
-                    color: AppColors.homeTeamColor.withOpacity(0.08),
+                    color: AppColors.homeTeamColor.withValues(alpha: 0.08),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
@@ -146,7 +146,7 @@ class TeamStatsScreen extends StatelessWidget {
                 // Dış Saha
                 Expanded(
                   child: Card(
-                    color: AppColors.awayTeamColor.withOpacity(0.08),
+                    color: AppColors.awayTeamColor.withValues(alpha: 0.08),
                     child: Padding(
                       padding: const EdgeInsets.all(12.0),
                       child: Column(
@@ -232,7 +232,7 @@ class _StatBox extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           title,
-          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
+          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
         ),
       ],
     );

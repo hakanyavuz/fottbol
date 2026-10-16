@@ -62,7 +62,7 @@ class ComparisonScreen extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: AppColors.homeTeamColor.withOpacity(0.15),
+                            backgroundColor: AppColors.homeTeamColor.withValues(alpha: 0.15),
                             child: Text(
                               homeTeam.initial,
                               style: const TextStyle(
@@ -88,7 +88,7 @@ class ComparisonScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.15),
+                        color: Colors.grey.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: const Text(
@@ -103,7 +103,7 @@ class ComparisonScreen extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: AppColors.awayTeamColor.withOpacity(0.15),
+                            backgroundColor: AppColors.awayTeamColor.withValues(alpha: 0.15),
                             child: Text(
                               awayTeam.initial,
                               style: const TextStyle(
@@ -276,9 +276,9 @@ class _PlayerHighlight extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: teamColor.withOpacity(0.08),
+        color: teamColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: teamColor.withOpacity(0.2)),
+        border: Border.all(color: teamColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

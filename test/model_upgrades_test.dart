@@ -73,6 +73,8 @@ class H2HSpyService extends ApiFootballService {
   Future<HeadToHeadSummary?> getHeadToHead({
     required int homeTeamId,
     required int awayTeamId,
+    String? homeTeamName,
+    String? awayTeamName,
     int last = 10,
   }) async {
     calls++;

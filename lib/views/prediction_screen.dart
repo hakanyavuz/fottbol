@@ -27,6 +27,7 @@ import '../widgets/stadium_weather_card.dart';
 import '../widgets/value_bet_card.dart';
 import '../widgets/smart_picks_report_card.dart';
 import '../widgets/specialized_markets_card.dart';
+import '../widgets/player_and_form_comparison_card.dart';
 import '../widgets/service_health_badge.dart';
 
 import '../models/social_post.dart';
@@ -283,9 +284,9 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.15),
+                  color: Colors.red.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.withOpacity(0.5)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                 ),
                 child: Row(
                   children: [
@@ -307,9 +308,9 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.deepOrange.withOpacity(0.15),
+                  color: Colors.deepOrange.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.deepOrangeAccent.withOpacity(0.6)),
+                  border: Border.all(color: Colors.deepOrangeAccent.withValues(alpha: 0.6)),
                 ),
                 child: Row(
                   children: [
@@ -408,6 +409,9 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
             // 1a. Akıllı Bahis Karnesi (Quant Multi-Market Picks & EV)
             SmartPicksReportCard(prediction: prediction),
             const SizedBox(height: 16),
+
+            // 1a-2. Detaylı Form (Son 5/10, İç/Dış Saha) & Kilit Oyuncu Düellosu / Eksikler Kartı
+            PlayerAndFormComparisonCard(prediction: prediction),
 
             // 1b. Club Elo & xG Takım Güç Endeksi Kartı
             if (prediction.homeElo != null && prediction.awayElo != null) ...[
@@ -529,11 +533,11 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           decoration: BoxDecoration(
                             color: index == 1
-                                ? AppColors.primary.withOpacity(0.15)
+                                ? AppColors.primary.withValues(alpha: 0.15)
                                 : Theme.of(context).colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: index == 1 ? AppColors.primary : Colors.grey.withOpacity(0.3),
+                              color: index == 1 ? AppColors.primary : Colors.grey.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Column(
@@ -793,7 +797,7 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.04),
+                                color: Colors.white.withValues(alpha: 0.04),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: Colors.white10),
                               ),
@@ -828,14 +832,14 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
             Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.purpleAccent.withOpacity(0.4), width: 1.2),
+                side: BorderSide(color: Colors.purpleAccent.withValues(alpha: 0.4), width: 1.2),
               ),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: LinearGradient(
                     colors: [
-                      Colors.purple.withOpacity(0.08),
+                      Colors.purple.withValues(alpha: 0.08),
                       Colors.transparent,
                     ],
                     begin: Alignment.topLeft,
@@ -883,7 +887,7 @@ ${p.topScores.map((s) => '  • ${s.scoreString} (%${s.probability.toStringAsFix
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardTheme.color?.withOpacity(0.6),
+                        color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -1164,9 +1168,9 @@ class LiveLineupTrackerCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.08),
+                      color: Colors.orange.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.25)),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       children: [

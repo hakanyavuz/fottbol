@@ -19,9 +19,12 @@ void main() {
       expect(cityElo, greaterThanOrEqualTo(2000.0));
     });
 
-    test('Bilinmeyen takım için standart lig ortalama puanı (~1480) döner', () {
-      final unknownElo = ClubEloService.getTeamElo('Bilinmeyen Köy Spor');
-      expect(unknownElo, equals(1480.0));
+    test('Bilinmeyen takım için deterministik orta sıra lig puanı (1385-1610) döner', () {
+      final unknownElo1 = ClubEloService.getTeamElo('Bilinmeyen Köy Spor');
+      final unknownElo2 = ClubEloService.getTeamElo('Farklı Kasaba FK');
+      expect(unknownElo1, inInclusiveRange(1385.0, 1610.0));
+      expect(unknownElo2, inInclusiveRange(1385.0, 1610.0));
+      expect(unknownElo1, isNot(equals(unknownElo2)));
     });
 
     test('Elo farkı (Delta Elo) doğru hesaplanır', () {

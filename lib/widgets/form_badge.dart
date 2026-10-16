@@ -38,7 +38,7 @@ class FormBadgeList extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: bg.withOpacity(0.4),
+                color: bg.withValues(alpha: 0.4),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               )

@@ -195,12 +195,12 @@ class _CustomMatchArenaScreenState extends State<CustomMatchArenaScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.orange.withOpacity(0.15),
-                    Colors.deepOrange.withOpacity(0.05),
+                    Colors.orange.withValues(alpha: 0.15),
+                    Colors.deepOrange.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 children: [
@@ -395,7 +395,7 @@ class _CustomMatchArenaScreenState extends State<CustomMatchArenaScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF161B22),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Column(
           children: [
@@ -406,7 +406,7 @@ class _CustomMatchArenaScreenState extends State<CustomMatchArenaScreen> {
             const SizedBox(height: 10),
             CircleAvatar(
               radius: 26,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: team != null
                   ? Text(
                       team.shortName,

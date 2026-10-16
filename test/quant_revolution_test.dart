@@ -8,6 +8,8 @@ import 'package:fottbol_prediction/models/team.dart';
 import 'package:fottbol_prediction/services/dropping_odds_service.dart';
 import 'package:fottbol_prediction/services/live_momentum_service.dart';
 import 'package:fottbol_prediction/models/match_event.dart';
+import 'package:fottbol_prediction/services/club_elo_service.dart';
+import 'package:fottbol_prediction/services/football_offline_repository.dart';
 import 'package:fottbol_prediction/services/poisson_engine.dart';
 import 'package:fottbol_prediction/services/specialized_markets_engine.dart';
 
@@ -217,5 +219,55 @@ void main() {
       expect(bogeyReport.frustrationIndex, greaterThanOrEqualTo(60.0));
       expect(bogeyReport.description, contains('KABUS RAKİP ALARMI'));
     });
+
+    test('Farklı lig ve takımlar kopya şablona düşmez, özgün istatistik ve tahmin üretir', () {
+      final realMadridStats = FootballOfflineRepository.getRealisticStats(541, 'Real Madrid', 'La Liga');
+      final valladolidStats = FootballOfflineRepository.getRealisticStats(720, 'Real Valladolid', 'La Liga');
+      final atletiStats = FootballOfflineRepository.getRealisticStats(530, 'Atletico Madrid', 'La Liga');
+      final barcaStats = FootballOfflineRepository.getRealisticStats(529, 'FC Barcelona', 'La Liga');
+
+      // Devler bile birbirinin kopyası değildir; hücum/savunma karakterleri ayrışır
+      expect(barcaStats.goalsScored, isNot(equals(atletiStats.goalsScored)));
+      expect(realMadridStats.goalsScored, greaterThan(valladolidStats.goalsScored + 15));
+      expect(realMadridStats.recentForm, isNot(equals(valladolidStats.recentForm)));
+
+      // Beşiktaş vs Kasımpaşa H2H kabus rakip etkisini otomatik yakalar
+      final bjkKasH2h = FootballOfflineRepository.getHeadToHead(
+        549,
+        1002,
+        homeName: 'Beşiktaş',
+        awayName: 'Kasımpaşa',
+      );
+      final bjkTeam = Team(
+        id: '549',
+        name: 'Beşiktaş',
+        shortName: 'BES',
+        crestUrl: '',
+        league: 'Süper Lig',
+        venue: 'Tüpraş Stadyumu',
+        stats: FootballOfflineRepository.getRealisticStats(549, 'Beşiktaş', 'Süper Lig'),
+        squad: const [],
+      );
+      final kasTeam = Team(
+        id: '1002',
+        name: 'Kasımpaşa',
+        shortName: 'KAS',
+        crestUrl: '',
+        league: 'Süper Lig',
+        venue: 'Recep Tayyip Erdoğan Stadyumu',
+        stats: FootballOfflineRepository.getRealisticStats(1002, 'Kasımpaşa', 'Süper Lig'),
+        squad: const [],
+      );
+
+      final bjkPred = PoissonEngine.calculatePrediction(
+        homeTeam: bjkTeam,
+        awayTeam: kasTeam,
+        headToHead: bjkKasH2h,
+        homeElo: ClubEloService.getTeamElo('Beşiktaş'),
+        awayElo: ClubEloService.getTeamElo('Kasımpaşa'),
+      );
+      expect(bjkPred.bogeyAnalysis?.hasBogeyEffect, isTrue);
+    });
   });
 }
+

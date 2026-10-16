@@ -68,18 +68,33 @@ class PoissonEngine {
       '(Savunma Zafiyeti: %${(awayDefenseWeakness * 100).toStringAsFixed(0)}).',
     );
 
-    // 2. Son Maç Form Faktörü (Son 5 maç)
-    double homeFormFactor = _calculateFormFactor(homeTeam.stats.recentForm);
-    double awayFormFactor = _calculateFormFactor(awayTeam.stats.recentForm);
+    // 2. Son 5 / Son 10 Maç & İç Saha / Deplasman Ayrıştırılmış Form Faktörü
+    final bool hasHomeSplit = homeTeam.stats.homePlayed > 0 && (homeTeam.stats.homeWon > 0 || homeTeam.stats.homeDrawn > 0);
+    final bool hasAwaySplit = awayTeam.stats.awayPlayed > 0 && (awayTeam.stats.awayWon > 0 || awayTeam.stats.awayDrawn > 0);
+    final double homeOverall5 = _calculateFormFactor(homeTeam.stats.recentForm);
+    final double awayOverall5 = _calculateFormFactor(awayTeam.stats.recentForm);
+    final double homeVenue5 = hasHomeSplit ? _calculateFormFactor(homeTeam.stats.effectiveHomeForm) : homeOverall5;
+    final double awayVenue5 = hasAwaySplit ? _calculateFormFactor(awayTeam.stats.effectiveAwayForm) : awayOverall5;
+    final double homeLast10 = hasHomeSplit ? _calculateFormFactor(homeTeam.stats.effectiveLast10Form) : homeOverall5;
+    final double awayLast10 = hasAwaySplit ? _calculateFormFactor(awayTeam.stats.effectiveLast10Form) : awayOverall5;
 
-    final homePoints = _formPoints(homeTeam.stats.recentForm);
-    final awayPoints = _formPoints(awayTeam.stats.recentForm);
+    double homeFormFactor = (homeVenue5 * 0.45) + (homeOverall5 * 0.35) + (homeLast10 * 0.20);
+    double awayFormFactor = (awayVenue5 * 0.45) + (awayOverall5 * 0.35) + (awayLast10 * 0.20);
+
+    final homePoints5 = _formPoints(homeTeam.stats.recentForm);
+    final awayPoints5 = _formPoints(awayTeam.stats.recentForm);
+    final homePoints10 = _formPoints(homeTeam.stats.effectiveLast10Form);
+    final awayPoints10 = _formPoints(awayTeam.stats.effectiveLast10Form);
+    final homeVenuePts = _formPoints(homeTeam.stats.effectiveHomeForm);
+    final awayVenuePts = _formPoints(awayTeam.stats.effectiveAwayForm);
+
     rationale.add(
-      'Son 5 maçlık form tablosunda ${homeTeam.name} $homePoints/15 puan toplarken, '
-      '${awayTeam.name} $awayPoints/15 puan topladı.',
+      '📊 Form Analizi (Son 5 / Son 10 / Saha Ayrımı): '
+      '${homeTeam.name} genel $homePoints5/15 (Son 10: $homePoints10/30, İç Saha Son 5: $homeVenuePts/15 - ${homeTeam.stats.homePointsPerGame.toStringAsFixed(2)} PPG) | '
+      '${awayTeam.name} genel $awayPoints5/15 (Son 10: $awayPoints10/30, Deplasman Son 5: $awayVenuePts/15 - ${awayTeam.stats.awayPointsPerGame.toStringAsFixed(2)} PPG).',
     );
 
-    // 3. Kadro ve Sakatlık Etkisi (Dinamik Gol Payı ve Mevki Ağırlıklı)
+    // 3. Kadro, Yıldız Oyuncu Düellosu ve Sakat/Cezalı Etkisi (Dinamik Gol Payı)
     final bool missingSquad = homeTeam.squad.isEmpty || awayTeam.squad.isEmpty;
     final bool missingStats = !homeTeam.stats.hasData || !awayTeam.stats.hasData;
     final bool isSparseData = missingSquad || missingStats;
@@ -104,6 +119,21 @@ class PoissonEngine {
       rationale.insert(0, '⚠️ Sınırlı Veri Modu: ${eksikler.join('; ')}.');
     }
 
+    // 3a. Sağlam Yıldız Oyuncu Karşılaştırması (Kilit Oyuncu Düellosu)
+    final healthyHome = homeTeam.squad.where((p) => !p.isInjured).toList()
+      ..sort((a, b) => (b.goals * 2 + b.assists).compareTo(a.goals * 2 + a.assists));
+    final healthyAway = awayTeam.squad.where((p) => !p.isInjured).toList()
+      ..sort((a, b) => (b.goals * 2 + b.assists).compareTo(a.goals * 2 + a.assists));
+
+    if (healthyHome.isNotEmpty && healthyAway.isNotEmpty) {
+      final hStar = healthyHome.first;
+      final aStar = healthyAway.first;
+      rationale.add(
+        '🌟 Kilit Oyuncu Düellosu: ${homeTeam.name} adına ${hStar.name} (${hStar.goals}G/${hStar.assists}A, Reyting: ${hStar.rating.toStringAsFixed(1)}) '
+        'vs ${awayTeam.name} adına ${aStar.name} (${aStar.goals}G/${aStar.assists}A, Reyting: ${aStar.rating.toStringAsFixed(1)}).',
+      );
+    }
+
     double homeInjuryAttackMultiplier = 1.0;
     double homeInjuryDefenseMultiplier = 1.0;
     for (final player in homeTeam.squad.where((p) => p.isInjured)) {
@@ -112,7 +142,8 @@ class PoissonEngine {
       homeInjuryDefenseMultiplier += player.defensePenalty;
       if (dynPenalty > 0 || player.defensePenalty > 0) {
         rationale.add(
-          '${homeTeam.name} kilit oyuncusu ${player.name} (${player.position}) sakatlığı nedeniyle hücum/savunma verimi revize edildi (-%${(dynPenalty * 100).toStringAsFixed(1)}).',
+          '🚑 ${homeTeam.name} Eksik/Cezalı: ${player.name} (${player.position}${player.injuryReason != null ? " - ${player.injuryReason}" : ""}) '
+          'nedeniyle hücum/savunma verimi revize edildi (-%${(dynPenalty * 100).toStringAsFixed(1)}).',
         );
       }
     }
@@ -125,10 +156,12 @@ class PoissonEngine {
       awayInjuryDefenseMultiplier += player.defensePenalty;
       if (dynPenalty > 0 || player.defensePenalty > 0) {
         rationale.add(
-          '${awayTeam.name} kilit oyuncusu ${player.name} (${player.position}) sakatlığı deplasman gücünü etkiliyor (-%${(dynPenalty * 100).toStringAsFixed(1)}).',
+          '🚑 ${awayTeam.name} Eksik/Cezalı: ${player.name} (${player.position}${player.injuryReason != null ? " - ${player.injuryReason}" : ""}) '
+          'deplasman gücünü etkiliyor (-%${(dynPenalty * 100).toStringAsFixed(1)}).',
         );
       }
     }
+
 
     // 3b. Dinlenme ve Fikstür Yoğunluğu (Fatigue & Rest Days)
     // Varsayılan lig ritminde 6-7 gün dinlenme normaldir; hafta içi Avrupa maçı yapanlar 3 gün dinlenir.
@@ -171,8 +204,8 @@ class PoissonEngine {
     }
 
     // 3e. Club Elo Küresel Güç Endeksi ve Takım Kalite Farkı
-    final effectiveHomeElo = homeElo ?? ClubEloService.getTeamElo(homeTeam.name);
-    final effectiveAwayElo = awayElo ?? ClubEloService.getTeamElo(awayTeam.name);
+    final effectiveHomeElo = homeElo ?? (isSparseData ? 1480.0 : ClubEloService.getTeamElo(homeTeam.name));
+    final effectiveAwayElo = awayElo ?? (isSparseData ? 1480.0 : ClubEloService.getTeamElo(awayTeam.name));
     final eloDiff = effectiveHomeElo - effectiveAwayElo;
     final eloMultipliers = ClubEloService.calculateGoalMultipliers(eloDiff);
 
@@ -202,24 +235,27 @@ class PoissonEngine {
     double awayShotMultiplier = aShots != null ? (0.90 + (awayShotEff / 0.34) * 0.10) : 1.0;
 
     // 3d. Hakem Eğilimi & Kart/Penaltı Etkisi (Referee Bias & Strictness)
-    RefereeStat? refStat;
+    final RefereeStat refStat = RefereeStat.forMatch(
+      rawName: referee,
+      homeTeam: homeTeam.name,
+      awayTeam: awayTeam.name,
+      league: homeTeam.league,
+    );
     double refereePenaltyXgMultiplier = 1.0;
-    if (referee != null && referee.isNotEmpty) {
-      refStat = RefereeStat.forName(referee);
-      if (refStat.hasHighPenaltyTendency) {
-        refereePenaltyXgMultiplier = 1.04; // Yüksek penaltı eğilimi toplam gol beklentisini %4 artırır
-        rationale.add(
-          'Hakem ${refStat.name}: Maç başı ${refStat.avgPenalties.toStringAsFixed(2)} penaltı ve '
-          '${refStat.avgYellowCards.toStringAsFixed(1)} sarı kart ortalamasına sahip (${refStat.strictnessRating}). '
-          'Penaltı olasılığı yüksek görüldüğünden beklenen gol çarpanı revize edildi (+%4).',
-        );
-      } else {
-        rationale.add(
-          'Hakem ${refStat.name}: Maç başı ${refStat.avgFouls.toStringAsFixed(0)} faul ve '
-          '${refStat.avgYellowCards.toStringAsFixed(1)} sarı kart ortalamasıyla maçı yönetiyor (${refStat.strictnessRating}).',
-        );
-      }
+    if (refStat.hasHighPenaltyTendency && (!isSparseData || referee != null)) {
+      refereePenaltyXgMultiplier = 1.04; // Yüksek penaltı eğilimi toplam gol beklentisini %4 artırır
+      rationale.add(
+        '⚖️ Hakem ${refStat.name}: Maç başı ${refStat.avgPenalties.toStringAsFixed(2)} penaltı ve '
+        '${refStat.avgYellowCards.toStringAsFixed(1)} sarı kart ortalamasına sahip (${refStat.strictnessRating}). '
+        'Penaltı olasılığı yüksek görüldüğünden beklenen gol çarpanı revize edildi (+%4).',
+      );
+    } else {
+      rationale.add(
+        '⚖️ Hakem ${refStat.name}: Maç başı ${refStat.avgFouls.toStringAsFixed(0)} faul ve '
+        '${refStat.avgYellowCards.toStringAsFixed(1)} sarı kart ortalamasıyla maçı yönetiyor (${refStat.strictnessRating}).',
+      );
     }
+
 
     // Nötr Saha Etkisi: Ev sahibi avantajını nötrler
     double effectiveHomeAvgGoals = leagueAvgHomeGoals;

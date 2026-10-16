@@ -62,6 +62,20 @@ class Team {
   /// Sakat oyuncuların listesi
   List<Player> get injuredPlayers => squad.where((p) => p.isInjured).toList();
 
+  /// Sakat/cezalı oyuncular nedeniyle oluşan deterministik hücum güç kaybı yüzdesi (%)
+  double get attackAvailabilityLossPercent {
+    if (squad.isEmpty || injuredPlayers.isEmpty) return 0.0;
+    double totalContrib = 0;
+    double injuredContrib = 0;
+    for (final p in squad) {
+      final contrib = p.goals * 1.5 + p.assists * 1.0 + p.rating * 0.2;
+      totalContrib += contrib;
+      if (p.isInjured) injuredContrib += contrib;
+    }
+    if (totalContrib <= 0) return (injuredPlayers.length * 4.5).clamp(0.0, 25.0);
+    return ((injuredContrib / totalContrib) * 35.0).clamp(1.5, 25.0);
+  }
+
   /// Kadro veya istatistik güncellemelerinde paylaşılan nesneyi bozmadan kopya üretir
   Team copyWith({MatchStat? stats, List<Player>? squad}) => Team(
     id: id,

@@ -603,6 +603,22 @@ class MatchPredictionProvider extends ChangeNotifier {
           referee ??= matchedFixture.referee;
         }
       }
+      // Seçili takımların istatistiklerini varsa canlı ESPN puan durumundan (Ücretsiz) tazele
+      final liveHomeStat = await RealSportsLiveService.getLiveTeamStats(
+        _homeTeam!.name,
+        leagueCountryOrName: _homeTeam!.league,
+      );
+      if (liveHomeStat != null) {
+        _homeTeam = _homeTeam!.copyWith(stats: liveHomeStat);
+      }
+      final liveAwayStat = await RealSportsLiveService.getLiveTeamStats(
+        _awayTeam!.name,
+        leagueCountryOrName: _awayTeam!.league,
+      );
+      if (liveAwayStat != null) {
+        _awayTeam = _awayTeam!.copyWith(stats: liveAwayStat);
+      }
+
       final liveStats = await MultiSourceFootballService.getLiveStatsForMatch(
         homeTeam: _homeTeam!.name,
         awayTeam: _awayTeam!.name,
@@ -615,7 +631,7 @@ class MatchPredictionProvider extends ChangeNotifier {
       final double homeElo = ClubEloService.getTeamElo(_homeTeam!.name);
       final double awayElo = ClubEloService.getTeamElo(_awayTeam!.name);
 
-      // Piyasa Oranlarını çek (Sofascore / Canlı Hatlar)
+      // Piyasa Oranlarını çek (Sofascore / ESPN / Canlı Hatlar)
       BookmakerOdds? marketOdds = await MultiSourceFootballService.getOddsForMatch(
         homeTeam: _homeTeam!.name,
         awayTeam: _awayTeam!.name,
@@ -623,6 +639,15 @@ class MatchPredictionProvider extends ChangeNotifier {
         fixtureId: autoFixtureId != -1 ? autoFixtureId : null,
         apiService: api,
       );
+
+      // Canlı büro oranı çekilemediyse, Poisson'un kopyasını değil bağımsız Elo Piyasa Çizgisini üret
+      final eloMults = ClubEloService.calculateGoalMultipliers(homeElo - awayElo);
+      final eloMarketOdds = marketOdds ??
+          api.simulateMarketOdds(
+            lambdaHome: (1.50 * eloMults.homeMultiplier).clamp(0.45, 3.40),
+            lambdaAway: (1.18 * eloMults.awayMultiplier).clamp(0.35, 3.10),
+            bookmakerName: 'Elo Piyasa Çizgisi',
+          );
 
       final prediction = PoissonEngine.calculatePrediction(
         homeTeam: _homeTeam!,
@@ -640,17 +665,16 @@ class MatchPredictionProvider extends ChangeNotifier {
         awayElo: awayElo,
         homeXg: liveStats?.homeXg,
         awayXg: liveStats?.awayXg,
-        marketOdds: marketOdds,
+        marketOdds: eloMarketOdds,
       );
 
-      marketOdds ??= api.simulateMarketOdds(lambdaHome: prediction.lambdaHome, lambdaAway: prediction.lambdaAway);
       prediction.oddsComparison = OddsComparison.fromModelAndOdds(
-        odds: marketOdds,
+        odds: eloMarketOdds,
         modelHomeProb: prediction.homeWinProbability,
         modelDrawProb: prediction.drawProbability,
         modelAwayProb: prediction.awayWinProbability,
       );
-      prediction.consensus = ConsensusEngine.buildConsensus(prediction: prediction, odds: marketOdds);
+      prediction.consensus = ConsensusEngine.buildConsensus(prediction: prediction, odds: eloMarketOdds);
       _currentPrediction = prediction;
       _currentLineups = null;
       _currentEvents = [];
@@ -682,8 +706,24 @@ class MatchPredictionProvider extends ChangeNotifier {
   Future<HeadToHeadSummary?> _loadHeadToHead(ApiFootballService api) async {
     final homeId = _homeTeam?.apiFootballId;
     final awayId = _awayTeam?.apiFootballId;
-    if (homeId == null || awayId == null || !api.hasKey) return null;
-    try { return await api.getHeadToHead(homeTeamId: homeId, awayTeamId: awayId).timeout(const Duration(seconds: 15)); } catch (_) { return null; }
+    if (homeId == null || awayId == null) return null;
+    try {
+      return await api
+          .getHeadToHead(
+            homeTeamId: homeId,
+            awayTeamId: awayId,
+            homeTeamName: _homeTeam?.name,
+            awayTeamName: _awayTeam!.name,
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      return FootballOfflineRepository.getHeadToHead(
+        homeId,
+        awayId,
+        homeName: _homeTeam!.name,
+        awayName: _awayTeam!.name,
+      );
+    }
   }
 
   Future<void> refreshGeminiAnalysis() async {
@@ -702,7 +742,6 @@ class MatchPredictionProvider extends ChangeNotifier {
   }
 
   Future<int> refreshResults(ApiFootballService service, {int maxRequests = 10}) async {
-    if (!service.hasKey) return 0;
     final pending = _pastPredictions.where((p) => p.isAwaitingResult).take(maxRequests).toList();
     if (pending.isEmpty) return 0;
     var updated = 0;
@@ -710,7 +749,20 @@ class MatchPredictionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       for (final prediction in pending) {
-        final fixture = await service.getFixtureById(prediction.fixtureId!, forceRefresh: true);
+        Fixture? fixture;
+        // 1. Önce yüklü canlı maçlardan kontrol et
+        for (final f in _liveFixtures) {
+          if ((prediction.fixtureId != null && f.id == prediction.fixtureId) ||
+              (TeamNameMatcher.matches(f.homeTeamName, prediction.homeTeam.name) &&
+               TeamNameMatcher.matches(f.awayTeamName, prediction.awayTeam.name))) {
+            fixture = f;
+            break;
+          }
+        }
+        // 2. Bulunamadıysa ve API anahtarı varsa servisten çek
+        if (fixture == null && service.hasKey && prediction.fixtureId != null) {
+          fixture = await service.getFixtureById(prediction.fixtureId!, forceRefresh: true);
+        }
         if (fixture == null) continue;
         prediction.fixtureStatus = fixture.statusShort;
         if (fixture.isFinished && fixture.hasScore) {
@@ -727,6 +779,7 @@ class MatchPredictionProvider extends ChangeNotifier {
     }
     return updated;
   }
+
 
   Future<void> loadPastPredictions() async {
     _pastPredictions = await StorageService.getSavedPredictions();

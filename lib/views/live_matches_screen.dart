@@ -221,9 +221,9 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.7),
+        color: Theme.of(context).cardColor.withValues(alpha: 0.7),
         border: Border(
-          bottom: BorderSide(color: Colors.grey.withOpacity(0.12)),
+          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
         ),
       ),
       child: Row(
@@ -271,12 +271,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: isToday
-                    ? AppColors.primary.withOpacity(0.12)
-                    : Colors.white.withOpacity(0.05),
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : Colors.white.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isToday
-                      ? AppColors.primary.withOpacity(0.4)
+                      ? AppColors.primary.withValues(alpha: 0.4)
                       : Colors.white12,
                 ),
               ),
@@ -371,8 +371,8 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.6),
-        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.1))),
+        color: Theme.of(context).cardColor.withValues(alpha: 0.6),
+        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -385,7 +385,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
                 label: Text('${sport.emoji} ${sport.label}',
                     style: const TextStyle(fontSize: 12)),
                 selected: isSelected,
-                selectedColor: AppColors.primary.withOpacity(0.2),
+                selectedColor: AppColors.primary.withValues(alpha: 0.2),
                 onSelected: (selected) {
                   if (selected) {
                     setState(() {
@@ -438,7 +438,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
     return Container(
       height: 46,
       decoration: BoxDecoration(
-          color: Theme.of(context).cardColor.withOpacity(0.4)),
+          color: Theme.of(context).cardColor.withValues(alpha: 0.4)),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -456,7 +456,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
                 _selectedCountry = c['name']!;
                 _selectedLeague = 'Tümü';
               }),
-              selectedColor: AppColors.primary.withOpacity(0.2),
+              selectedColor: AppColors.primary.withValues(alpha: 0.2),
               labelStyle: TextStyle(
                   color: isSelected ? AppColors.primary : null,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -483,7 +483,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
     return Container(
       height: 42,
       decoration: BoxDecoration(
-          color: Theme.of(context).cardColor.withOpacity(0.2)),
+          color: Theme.of(context).cardColor.withValues(alpha: 0.2)),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -518,7 +518,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
               label: Text(labelText, style: const TextStyle(fontSize: 11)),
               selected: isSelected,
               onSelected: (_) => setState(() => _selectedLeague = tab),
-              selectedColor: Colors.amber.withOpacity(0.2),
+              selectedColor: Colors.amber.withValues(alpha: 0.2),
               labelStyle: TextStyle(
                   color: isSelected ? Colors.amber : null,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -540,7 +540,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.sports_soccer_outlined,
-                size: 64, color: Colors.grey.withOpacity(0.3)),
+                size: 64, color: Colors.grey.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
               hasFilter
@@ -598,7 +598,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      color: Colors.green.withOpacity(0.08),
+      color: Colors.green.withValues(alpha: 0.08),
       child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -623,7 +623,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: alert.isRedCard ? Colors.red.withOpacity(0.18) : Colors.green.withOpacity(0.18),
+        color: alert.isRedCard ? Colors.red.withValues(alpha: 0.18) : Colors.green.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: alert.isRedCard ? Colors.redAccent : Colors.greenAccent,
@@ -704,9 +704,9 @@ class _LiveFixtureTile extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: barColor.withOpacity(0.08),
+            color: barColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: barColor.withOpacity(0.25)),
+            border: Border.all(color: barColor.withValues(alpha: 0.25)),
           ),
           child: Column(
             children: [
@@ -756,9 +756,9 @@ class _LiveFixtureTile extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                         margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.2),
+                          color: Colors.purple.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                          border: Border.all(color: Colors.purple.withValues(alpha: 0.4)),
                         ),
                         child: const Text(
                           '⏱️ 75+ Son Düzlük',
@@ -769,9 +769,9 @@ class _LiveFixtureTile extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.red.withOpacity(0.4)),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
                         ),
                         child: const Text(
                           '⚠️ 10 Kişi Avantaj/Baskı',
@@ -845,10 +845,10 @@ class _LiveFixtureTile extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: (fixture.isLive ? Colors.red : Colors.grey.shade800).withOpacity(0.15),
+                      color: (fixture.isLive ? Colors.red : Colors.grey.shade800).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: (fixture.isLive ? Colors.red : Colors.white24).withOpacity(0.3),
+                        color: (fixture.isLive ? Colors.red : Colors.white24).withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -938,7 +938,7 @@ class _LiveFixtureTile extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
+                        color: AppColors.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1219,7 +1219,7 @@ class _StandingsBottomSheetState extends State<_StandingsBottomSheet> {
                     ),
                     selected: isSelected,
                     selectedColor: Colors.amber,
-                    backgroundColor: Colors.white.withOpacity(0.06),
+                    backgroundColor: Colors.white.withValues(alpha: 0.06),
                     onSelected: (_) => setState(() => _selectedLeague = league),
                   ),
                 );
@@ -1230,7 +1230,7 @@ class _StandingsBottomSheetState extends State<_StandingsBottomSheet> {
           // Tablo Başlığı
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.white.withOpacity(0.04),
+            color: Colors.white.withValues(alpha: 0.04),
             child: const Row(
               children: [
                 SizedBox(width: 28, child: Text('#', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold))),
@@ -1249,7 +1249,7 @@ class _StandingsBottomSheetState extends State<_StandingsBottomSheet> {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               itemCount: items.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withOpacity(0.06)),
+              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
               itemBuilder: (context, index) {
                 final it = items[index];
                 Color rankColor = Colors.white70;
@@ -1324,8 +1324,8 @@ class _StandingsBottomSheetState extends State<_StandingsBottomSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.06))),
+              color: Colors.white.withValues(alpha: 0.03),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,

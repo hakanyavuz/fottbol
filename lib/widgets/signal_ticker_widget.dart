@@ -46,9 +46,9 @@ class _SignalTickerWidgetState extends State<SignalTickerWidget> {
       height: 36,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.premiumGold.withOpacity(0.1),
+        color: AppColors.premiumGold.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.premiumGold.withOpacity(0.3)),
+        border: Border.all(color: AppColors.premiumGold.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

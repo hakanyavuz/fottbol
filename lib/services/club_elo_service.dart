@@ -38,16 +38,31 @@ class ClubEloService {
     _fetchLiveEloSilently(prefs);
   }
 
-  /// Bir takımın Elo puanını döner (Bulunamazsa lig ortalaması ~1480 varsayılır)
+  /// Canlı puan durumundan hesaplanan dinamik Elo güncellemesi
+  static void updateTeamElo(String teamName, double elo) {
+    final clean = teamName.toLowerCase().trim();
+    if (clean.isNotEmpty) {
+      _eloDatabase[clean] = elo.clamp(1250.0, 2100.0);
+    }
+  }
+
+  /// Bir takımın Elo puanını döner (Bulunamazsa takım kimliğine göre 1380-1610 arası ayrıştırılmış Elo üretir)
   static double getTeamElo(String teamName) {
     final clean = teamName.toLowerCase().trim();
+    if (_eloDatabase.containsKey(clean)) {
+      return _eloDatabase[clean]!;
+    }
     for (final entry in _eloDatabase.entries) {
       if (TeamNameMatcher.matches(entry.key, clean)) {
         return entry.value;
       }
     }
-    // Eşleşme yoksa genel lig medyanı döner
-    return 1480.0;
+    // Eşleşme yoksa her takıma aynı 1480 puanı vermek yerine deterministik güç kademesi üret
+    int hash = 0;
+    for (int i = 0; i < clean.length; i++) {
+      hash = (hash * 31 + clean.codeUnitAt(i)) & 0x7fffffff;
+    }
+    return 1385.0 + (hash % 225).toDouble();
   }
 
   /// İki takım arasındaki Elo farkını döner (Ev Sahibi - Deplasman)
@@ -111,7 +126,7 @@ class ClubEloService {
     }
   }
 
-  /// Çevrimdışı ve temel Süper Lig & Avrupa Kulüp Elo Veritabanı
+  /// Kapsamlı Dünya, Avrupa, Süper Lig ve Alt Ligler Kulüp Elo Veritabanı
   static final Map<String, double> _bundledEloRatings = {
     // Türkiye Süper Lig
     'galatasaray': 1735.0,
@@ -122,55 +137,202 @@ class ClubEloService {
     'trabzonspor': 1605.0,
     'başakşehir': 1565.0,
     'basaksehir': 1565.0,
-    'kasımpaşa': 1515.0,
-    'kasimpasa': 1515.0,
-    'sivasspor': 1500.0,
-    'alanyaspor': 1490.0,
-    'antalyaspor': 1485.0,
-    'çaykur rizespor': 1495.0,
-    'rizespor': 1495.0,
-    'samsunspor': 1520.0,
-    'göztepe': 1510.0,
-    'goztepe': 1510.0,
-    'gaziantep': 1470.0,
+    'samsunspor': 1545.0,
+    'eyüpspor': 1530.0,
+    'eyupspor': 1530.0,
+    'göztepe': 1525.0,
+    'goztepe': 1525.0,
+    'kasımpaşa': 1510.0,
+    'kasimpasa': 1510.0,
+    'sivasspor': 1495.0,
+    'çaykur rizespor': 1492.0,
+    'rizespor': 1492.0,
+    'alanyaspor': 1488.0,
+    'antalyaspor': 1482.0,
     'konyaspor': 1475.0,
-    'kayserispor': 1465.0,
-    'eyüpspor': 1515.0,
-    'eyupspor': 1515.0,
-    'bodrum fk': 1440.0,
-    'hatayspor': 1445.0,
-    'adana demirspor': 1410.0,
+    'gaziantep fk': 1470.0,
+    'gaziantep': 1470.0,
+    'kayserispor': 1460.0,
+    'hatayspor': 1442.0,
+    'bodrum fk': 1435.0,
+    'adana demirspor': 1385.0,
 
-    // Avrupa Devleri (Şampiyonlar Ligi / Avrupa Ligi)
-    'real madrid': 2045.0,
+    // TFF 1. Lig
+    'kocaelispor': 1455.0,
+    'fatih karagümrük': 1450.0,
+    'karagümrük': 1450.0,
+    'ankaragücü': 1445.0,
+    'gençlerbirliği': 1430.0,
+    'genclerbirligi': 1430.0,
+    'bandırmaspor': 1435.0,
+    'çorum fk': 1428.0,
+    'corum fk': 1428.0,
+    'erzurumspor fk': 1422.0,
+    'istanbulspor': 1418.0,
+    'amed sk': 1425.0,
+    'pendikspor': 1415.0,
+    'boluspor': 1410.0,
+    'sakaryaspor': 1405.0,
+    'keçiörengücü': 1408.0,
+    'ümraniyespor': 1402.0,
+    'manisa fk': 1395.0,
+    'şanlıurfaspor': 1385.0,
+    'adanaspor': 1370.0,
+    'yeni malatyaspor': 1310.0,
+
+    // İngiltere Premier League & Championship
     'manchester city': 2040.0,
-    'bayern münchen': 1990.0,
-    'bayern munich': 1990.0,
-    'arsenal': 1985.0,
-    'liverpool': 1995.0,
-    'inter': 1970.0,
-    'barcelona': 1975.0,
-    'bayer leverkusen': 1950.0,
-    'paris saint-germain': 1930.0,
-    'psg': 1930.0,
-    'atletico madrid': 1910.0,
-    'borussia dortmund': 1895.0,
-    'juventus': 1880.0,
-    'milan': 1860.0,
-    'atalanta': 1875.0,
-    'chelsea': 1870.0,
-    'aston villa': 1865.0,
-    'tottenham': 1845.0,
-    'newcastle': 1830.0,
+    'liverpool': 2005.0,
+    'arsenal': 1990.0,
+    'chelsea': 1895.0,
+    'aston villa': 1875.0,
+    'newcastle': 1860.0,
+    'newcastle united': 1860.0,
+    'tottenham': 1850.0,
+    'tottenham hotspur': 1850.0,
+    'brighton': 1835.0,
     'manchester united': 1825.0,
-    'roma': 1810.0,
-    'lazio': 1805.0,
-    'napoli': 1840.0,
-    'sporting cp': 1850.0,
-    'benfica': 1840.0,
-    'porto': 1815.0,
-    'ajax': 1750.0,
-    'feyenoord': 1770.0,
-    'psv': 1810.0,
+    'bournemouth': 1815.0,
+    'fulham': 1810.0,
+    'nottingham forest': 1805.0,
+    'brentford': 1795.0,
+    'west ham': 1785.0,
+    'crystal palace': 1780.0,
+    'everton': 1755.0,
+    'wolves': 1745.0,
+    'wolverhampton': 1745.0,
+    'leicester city': 1710.0,
+    'ipswich town': 1685.0,
+    'southampton': 1665.0,
+    'leeds united': 1740.0,
+    'burnley': 1725.0,
+    'sheffield united': 1715.0,
+    'sunderland': 1690.0,
+    'middlesbrough': 1680.0,
+    'west bromwich': 1675.0,
+    'norwich city': 1660.0,
+    'coventry city': 1655.0,
+    'watford': 1645.0,
+
+    // İspanya La Liga
+    'real madrid': 2045.0,
+    'fc barcelona': 1985.0,
+    'barcelona': 1985.0,
+    'atletico madrid': 1915.0,
+    'athletic club': 1865.0,
+    'athletic bilbao': 1865.0,
+    'villarreal': 1840.0,
+    'real sociedad': 1830.0,
+    'real betis': 1810.0,
+    'girona': 1800.0,
+    'osasuna': 1765.0,
+    'celta vigo': 1755.0,
+    'mallorca': 1750.0,
+    'rayo vallecano': 1740.0,
+    'sevilla': 1735.0,
+    'getafe': 1725.0,
+    'deportivo alaves': 1715.0,
+    'alaves': 1715.0,
+    'valencia': 1705.0,
+    'leganes': 1685.0,
+    'las palmas': 1675.0,
+    'espanyol': 1670.0,
+    'real valladolid': 1645.0,
+
+    // İtalya Serie A
+    'inter': 1975.0,
+    'internazionale': 1975.0,
+    'atalanta': 1910.0,
+    'napoli': 1890.0,
+    'juventus': 1880.0,
+    'ac milan': 1865.0,
+    'milan': 1865.0,
+    'lazio': 1845.0,
+    'fiorentina': 1835.0,
+    'bologna': 1820.0,
+    'roma': 1815.0,
+    'as roma': 1815.0,
+    'torino': 1765.0,
+    'udinese': 1745.0,
+    'genoa': 1730.0,
+    'empoli': 1715.0,
+    'cagliari': 1705.0,
+    'parma': 1700.0,
+    'como': 1695.0,
+    'hellas verona': 1690.0,
+    'lecce': 1680.0,
+    'monza': 1670.0,
+    'venezia': 1650.0,
+
+    // Almanya Bundesliga
+    'bayern münchen': 1995.0,
+    'bayern munich': 1995.0,
+    'bayer leverkusen': 1955.0,
+    'borussia dortmund': 1890.0,
+    'rb leipzig': 1875.0,
+    'eintracht frankfurt': 1845.0,
+    'vfb stuttgart': 1840.0,
+    'stuttgart': 1840.0,
+    'sc freiburg': 1795.0,
+    'freiburg': 1795.0,
+    'werder bremen': 1770.0,
+    'mainz 05': 1765.0,
+    'wolfsburg': 1760.0,
+    'borussia mönchengladbach': 1750.0,
+    'union berlin': 1735.0,
+    'augsburg': 1725.0,
+    'hoffenheim': 1715.0,
+    'heidenheim': 1700.0,
+    'st. pauli': 1680.0,
+    'vfl bochum': 1650.0,
+    'holstein kiel': 1640.0,
+
+    // Fransa Ligue 1
+    'paris saint-germain': 1935.0,
+    'psg': 1935.0,
+    'monaco': 1840.0,
+    'as monaco': 1840.0,
+    'lille': 1835.0,
+    'marseille': 1825.0,
+    'lyon': 1805.0,
+    'nice': 1790.0,
+    'lens': 1785.0,
+    'brest': 1775.0,
+    'rennes': 1760.0,
+    'reims': 1735.0,
+    'toulouse': 1730.0,
+    'strasbourg': 1720.0,
+    'auxerre': 1695.0,
+    'nantes': 1685.0,
+    'angers': 1665.0,
+    'saint-etienne': 1660.0,
+    'le havre': 1650.0,
+    'montpellier': 1640.0,
+
+    // Portekiz, Hollanda, İskoçya, Brezilya ve Diğerleri
+    'sporting cp': 1865.0,
+    'benfica': 1850.0,
+    'porto': 1825.0,
+    'braga': 1745.0,
+    'vitoria guimaraes': 1715.0,
+    'psv': 1825.0,
+    'feyenoord': 1785.0,
+    'ajax': 1770.0,
+    'twente': 1720.0,
+    'az alkmaar': 1725.0,
+    'club brugge': 1765.0,
+    'anderlecht': 1710.0,
+    'union sg': 1745.0,
+    'celtic': 1775.0,
+    'rangers': 1725.0,
+    'flamengo': 1790.0,
+    'palmeiras': 1795.0,
+    'botafogo': 1785.0,
+    'river plate': 1755.0,
+    'boca juniors': 1720.0,
+    'al-hilal': 1780.0,
+    'al-nassr': 1740.0,
+    'al-ittihad': 1735.0,
   };
 }
+

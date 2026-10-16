@@ -21,9 +21,9 @@ class ScoreBoardCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             colors: [
-              AppColors.homeTeamColor.withOpacity(0.12),
+              AppColors.homeTeamColor.withValues(alpha: 0.12),
               Colors.transparent,
-              AppColors.awayTeamColor.withOpacity(0.12),
+              AppColors.awayTeamColor.withValues(alpha: 0.12),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -36,9 +36,9 @@ class ScoreBoardCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
               ),
               child: const Text(
                 '⚽ POISSON SKOR TAHMİNİ',
@@ -91,12 +91,12 @@ class ScoreBoardCard extends StatelessWidget {
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.primary.withOpacity(0.4),
+                      color: AppColors.primary.withValues(alpha: 0.4),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -221,7 +221,7 @@ class _TeamLogo extends StatelessWidget {
   Widget _initialsAvatar() {
     return CircleAvatar(
       radius: 27,
-      backgroundColor: Colors.blueGrey.withOpacity(0.2),
+      backgroundColor: Colors.blueGrey.withValues(alpha: 0.2),
       child: Text(
         name.isNotEmpty ? name.substring(0, 1) : '?',
         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -247,9 +247,9 @@ class _ProbBox extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [

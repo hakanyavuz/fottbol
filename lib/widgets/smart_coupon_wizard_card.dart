@@ -192,9 +192,9 @@ class _CouponSlipView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: status == 'winning' ? Colors.green.withOpacity(0.1) : (status == 'lost' ? Colors.red.withOpacity(0.1) : color.withOpacity(0.15)),
+                    color: status == 'winning' ? Colors.green.withValues(alpha: 0.1) : (status == 'lost' ? Colors.red.withValues(alpha: 0.1) : color.withValues(alpha: 0.15)),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: status == 'winning' ? Colors.green : (status == 'lost' ? Colors.red : color.withOpacity(0.4))),
+                    border: Border.all(color: status == 'winning' ? Colors.green : (status == 'lost' ? Colors.red : color.withValues(alpha: 0.4))),
                   ),
                   child: Column(
                     children: [
@@ -216,7 +216,7 @@ class _CouponSlipView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            Divider(height: 1, color: theme.dividerColor.withOpacity(0.3)),
+            Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
             const SizedBox(height: 8),
 
             // Kupon Maçları
@@ -249,7 +249,7 @@ class _CouponSlipView extends StatelessWidget {
                             ),
                             Text(
                               it.selectionLabel + (it.prediction?.hasResult == true ? ' (${it.prediction?.actualScoreString})' : ''),
-                              style: TextStyle(fontSize: 11, color: won == false ? Colors.red.withOpacity(0.7) : Colors.grey),
+                              style: TextStyle(fontSize: 11, color: won == false ? Colors.red.withValues(alpha: 0.7) : Colors.grey),
                             ),
                           ],
                         ),
@@ -275,7 +275,7 @@ class _CouponSlipView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white12),
               ),

@@ -73,7 +73,7 @@ class HistoryScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history_toggle_off, size: 64, color: Colors.grey.withOpacity(0.4)),
+                  Icon(Icons.history_toggle_off, size: 64, color: Colors.grey.withValues(alpha: 0.4)),
                   const SizedBox(height: 16),
                   const Text(
                     'Henüz kayıtlı bir tahmin bulunmuyor.',
@@ -161,7 +161,7 @@ class HistoryScreen extends ConsumerWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.15),
+                                    color: AppColors.primary.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(color: AppColors.primary),
                                   ),

@@ -66,7 +66,11 @@ class MultiSourceFootballService {
     );
     if (sofaOdds != null) return sofaOdds;
 
-    // 2. Sofascore'da bulunamadıysa ve API-Football anahtarı varsa oradan dene
+    // 2. ESPN Scoreboard üzerinden yakalanmış gerçek büro oranlarını dene
+    final espnOdds = RealSportsLiveService.getCachedOddsForMatch(homeTeam, awayTeam);
+    if (espnOdds != null) return espnOdds;
+
+    // 3. API-Football anahtarı varsa oradan dene
     if (fixtureId != null && apiService != null && apiService.hasKey) {
       try {
         final apiOdds = await apiService.getOddsForFixture(fixtureId);
@@ -76,6 +80,7 @@ class MultiSourceFootballService {
 
     return null;
   }
+
 
   /// Bir maçın canlı xG ve şut istatistiklerini getirir
   static Future<LiveMatchStats?> getLiveStatsForMatch({

@@ -225,8 +225,7 @@ void main() {
         ),
       );
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle(const Duration(milliseconds: 500));
 
       // Tarih navigasyon butonlarının ve takvim ikonunun ekranda olduğunu doğrula
       expect(find.byIcon(Icons.arrow_back_ios_new), findsWidgets);

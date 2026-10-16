@@ -225,7 +225,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.15))),
+        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.15))),
       ),
       child: Row(
         children: [
@@ -254,7 +254,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.greenAccent.withOpacity(0.2),
+                          color: Colors.greenAccent.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text('BUGÜN', style: TextStyle(fontSize: 9.5, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
@@ -283,8 +283,8 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.4),
-        border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.1))),
+        color: Theme.of(context).cardColor.withValues(alpha: 0.4),
+        border: Border(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
       ),
       child: Column(
         children: [
@@ -307,7 +307,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
                   child: ChoiceChip(
                     label: Text(label, style: const TextStyle(fontSize: 11)),
                     selected: isSel,
-                    selectedColor: Colors.greenAccent.withOpacity(0.2),
+                    selectedColor: Colors.greenAccent.withValues(alpha: 0.2),
                     labelStyle: TextStyle(color: isSel ? Colors.greenAccent : null, fontSize: 11),
                     onSelected: (_) => setState(() => _selectedCountry = c),
                   ),
@@ -348,7 +348,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.greenAccent.withOpacity(0.08),
+      color: Colors.greenAccent.withValues(alpha: 0.08),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -406,7 +406,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 64, color: Colors.grey.withOpacity(0.3)),
+            Icon(Icons.search_off, size: 64, color: Colors.grey.withValues(alpha: 0.3)),
             const SizedBox(height: 16),
             Text(
               '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year} tarihinde %${_minEdge.toInt()} ve üzeri değerli bahis bulunamadı.',

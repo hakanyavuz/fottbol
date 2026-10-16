@@ -77,11 +77,13 @@ class TeamNameMatcher {
     for (final conflictGroup in _conflictingTokens) {
       final hasA = tokensA.any((t) => conflictGroup.contains(t));
       final hasB = tokensB.any((t) => conflictGroup.contains(t));
+      if (hasA && hasB) {
+        // Her iki takım da aynı çakışan grubun parçası
+        continue;
+      }
       if (hasA != hasB) {
-        // Biri Adana Demir, diğeri salt Adana ise çakışma engellenir
-        if (tokensA.contains('adana') && tokensB.contains('adana')) {
-          return false;
-        }
+        // Biri çakışan grubun parçası, diğeri değil
+        return false;
       }
     }
 
