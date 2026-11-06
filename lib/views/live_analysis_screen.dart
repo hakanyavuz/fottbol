@@ -6,6 +6,7 @@ import '../models/fixture.dart';
 import '../services/in_play_engine.dart';
 import '../widgets/match_probability_chart.dart';
 import '../widgets/momentum_graph.dart';
+import '../services/live_momentum_service.dart';
 import '../models/prediction_result.dart';
 import '../models/team.dart';
 import '../models/match_stat.dart';
@@ -82,6 +83,20 @@ class _LiveAnalysisScreenState extends State<LiveAnalysisScreen> {
       awayRedCards: liveMatch.awayRedCards,
       homeYellowCards: liveMatch.homeYellowCards,
       awayYellowCards: liveMatch.awayYellowCards,
+      homeTeamName: liveMatch.homeTeamName,
+      awayTeamName: liveMatch.awayTeamName,
+    );
+
+    final events = provider.getEventsForFixture(liveMatch.id);
+    final momentumTimeline = LiveMomentumService.generateTimeline(
+      currentMinute: liveMatch.elapsed ?? 45,
+      events: events,
+      homeTeamName: liveMatch.homeTeamName,
+      awayTeamName: liveMatch.awayTeamName,
+    );
+    final currentMomentum = LiveMomentumService.analyzeMomentum(
+      currentMinute: liveMatch.elapsed ?? 45,
+      events: events,
       homeTeamName: liveMatch.homeTeamName,
       awayTeamName: liveMatch.awayTeamName,
     );
@@ -169,10 +184,32 @@ class _LiveAnalysisScreenState extends State<LiveAnalysisScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            const Card(
+            if (currentMomentum.tacticalAlert != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.bolt, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        currentMomentum.tacticalAlert!,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.amberAccent),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: MomentumGraph(),
+                padding: const EdgeInsets.all(16),
+                child: MomentumGraph(momentumPoints: momentumTimeline),
               ),
             ),
 

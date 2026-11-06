@@ -10,10 +10,11 @@ import '../services/poisson_engine.dart';
 import '../services/real_sports_live_service.dart';
 import '../services/club_elo_service.dart';
 import '../services/multi_source_football_service.dart';
+import '../services/dropping_odds_service.dart';
 import '../widgets/value_bet_card.dart';
 import 'prediction_screen.dart';
 
-/// Değerli Bahis (Value Bet) Radarı — Piyasa oranları ile Poisson ihtimallerini kıyaslar
+/// Değerli Bahis (Value Bet) ve Düşen Oranlar Radarı — Piyasa oranları ile Poisson ihtimallerini kıyaslar
 class ValueBetRadarScreen extends ConsumerStatefulWidget {
   const ValueBetRadarScreen({super.key});
 
@@ -26,9 +27,11 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
   DateTime _selectedDate = DateTime.now();
   String _selectedCountry = 'Tümü';
   double _minEdge = 5.0; // Asgari %5 matematiksel avantaj
+  int _selectedTab = 0; // 0: Değerli Bahisler, 1: Düşen Oranlar & Akıllı Para
 
   List<ValueBet> _allDetectedBets = [];
   Map<ValueBet, PredictionResult> _betPredictions = {};
+  List<DroppingOddItem> _allDroppingOdds = [];
   int _scannedMatchCount = 0;
 
   @override
@@ -79,6 +82,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
 
       final List<ValueBet> results = [];
       final Map<ValueBet, PredictionResult> betPreds = {};
+      final List<PredictionResult> allPreds = [];
       _scannedMatchCount = fixtures.length;
 
       // En önemli 35 maçı tara (Performans ve akıcılık için)
@@ -99,6 +103,15 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
             apiService: footballService,
           ).timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
 
+          // Canlı büro oranı yoksa, Poisson'un kopyasını değil bağımsız Elo Piyasa Çizgisini üret
+          final eloMults = ClubEloService.calculateGoalMultipliers(homeElo - awayElo);
+          final eloMarketOdds = odds ??
+              footballService.simulateMarketOdds(
+                lambdaHome: (1.50 * eloMults.homeMultiplier).clamp(0.45, 3.40),
+                lambdaAway: (1.18 * eloMults.awayMultiplier).clamp(0.35, 3.10),
+                bookmakerName: 'Elo Piyasa Çizgisi',
+              );
+
           final pred = PoissonEngine.calculatePrediction(
             homeTeam: teams.home,
             awayTeam: teams.away,
@@ -106,16 +119,17 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
             matchDate: f.date,
             homeElo: homeElo,
             awayElo: awayElo,
-            marketOdds: odds,
+            marketOdds: eloMarketOdds,
           );
 
-          odds ??= footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
           pred.oddsComparison = OddsComparison.fromModelAndOdds(
-            odds: odds,
+            odds: eloMarketOdds,
             modelHomeProb: pred.homeWinProbability,
             modelDrawProb: pred.drawProbability,
             modelAwayProb: pred.awayWinProbability,
           );
+
+          allPreds.add(pred);
 
           final found = ValueBet.findValueBets(pred, minEdge: _minEdge);
           for (var vb in found) {
@@ -126,11 +140,13 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
       }
 
       results.sort((a, b) => b.edgePercentage.compareTo(a.edgePercentage));
+      final dropping = DroppingOddsService.analyzeDroppingOdds(allPreds, minDropPercent: 7.0);
 
       if (mounted) {
         setState(() {
           _allDetectedBets = results;
           _betPredictions = betPreds;
+          _allDroppingOdds = dropping;
           _isScanning = false;
         });
       }
@@ -149,10 +165,18 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
     }).toList();
   }
 
+  List<DroppingOddItem> get _filteredDroppingOdds {
+    if (_selectedCountry == 'Tümü') return _allDroppingOdds;
+    return _allDroppingOdds.where((item) {
+      return LeagueConstants.countryMatches(item.leagueName, _selectedCountry);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredBets;
-    final maxEdge = filtered.isNotEmpty ? filtered.first.edgePercentage : 0.0;
+    final filteredBets = _filteredBets;
+    final filteredDrops = _filteredDroppingOdds;
+    final maxEdge = filteredBets.isNotEmpty ? filteredBets.first.edgePercentage : 0.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -160,7 +184,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
           children: [
             Icon(Icons.radar, color: Colors.greenAccent),
             SizedBox(width: 8),
-            Text('DEĞERLİ BAHİS RADARI'),
+            Text('DEĞERLİ BAHİS VE PİYASA RADARI'),
           ],
         ),
         actions: [
@@ -179,39 +203,226 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
           // 2. Ülke & Hassasiyet Filtresi
           _buildFilterBar(),
 
-          // 3. Özet İstatistik Çubuğu
-          if (!_isScanning && filtered.isNotEmpty)
-            _buildSummaryStats(filtered.length, maxEdge),
+          // 3. Tab Seçici (Değerli Bahisler vs Düşen Oranlar)
+          _buildSegmentedTab(filteredBets.length, filteredDrops.length),
 
-          // 4. Ana Liste
+          // 4. Özet İstatistik Çubuğu
+          if (!_isScanning && _selectedTab == 0 && filteredBets.isNotEmpty)
+            _buildSummaryStats(filteredBets.length, maxEdge),
+
+          // 5. Ana Liste
           Expanded(
             child: _isScanning
                 ? _buildScanningState()
-                : filtered.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final bet = filtered[index];
-                          final pred = _betPredictions[bet];
-                          return ValueBetCard(
-                            bet: bet,
-                            onTap: pred != null
-                                ? () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => PredictionScreen(historyItem: pred),
-                                      ),
-                                    );
-                                  }
-                                : null,
-                          );
-                        },
-                      ),
+                : _selectedTab == 0
+                    ? (filteredBets.isEmpty ? _buildEmptyState() : _buildValueBetsList(filteredBets))
+                    : (filteredDrops.isEmpty ? _buildEmptyDroppingOddsState() : _buildDroppingOddsList(filteredDrops)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentedTab(int betsCount, int dropsCount) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: Theme.of(context).cardColor.withValues(alpha: 0.3),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(() => _selectedTab = 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 0 ? Colors.greenAccent.withValues(alpha: 0.2) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _selectedTab == 0 ? Colors.greenAccent : Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '🎯 Değerli Bahisler ($betsCount)',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: _selectedTab == 0 ? Colors.greenAccent : Colors.white70,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(() => _selectedTab = 1),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _selectedTab == 1 ? Colors.amber.withValues(alpha: 0.2) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _selectedTab == 1 ? Colors.amber : Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '📉 Düşen Oranlar ($dropsCount)',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: _selectedTab == 1 ? Colors.amber : Colors.white70,
+                        ),
+                      ),
+                      if (_allDroppingOdds.any((d) => d.isSmartMoneyAlert)) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValueBetsList(List<ValueBet> bets) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: bets.length,
+      itemBuilder: (context, index) {
+        final bet = bets[index];
+        final pred = _betPredictions[bet];
+        return ValueBetCard(
+          bet: bet,
+          onTap: pred != null
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PredictionScreen(historyItem: pred),
+                    ),
+                  );
+                }
+              : null,
+        );
+      },
+    );
+  }
+
+  Widget _buildDroppingOddsList(List<DroppingOddItem> items) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        return _buildDroppingOddCard(items[index]);
+      },
+    );
+  }
+
+  Widget _buildDroppingOddCard(DroppingOddItem item) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: item.isSmartMoneyAlert
+              ? Colors.redAccent.withValues(alpha: 0.6)
+              : Colors.amber.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.matchTitle,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (item.isSmartMoneyAlert)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.6)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_fire_department, size: 12, color: Colors.redAccent),
+                        SizedBox(width: 4),
+                        Text(
+                          'AKILLI PARA',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.marketName,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.cyanAccent),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  'Açılış: ${item.openingOdd.toStringAsFixed(2)} ➔ Güncel: ${item.currentOdd.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.white70),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '-%${item.dropPercentage.toStringAsFixed(1)}',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.rationale,
+              style: const TextStyle(fontSize: 11.5, color: Colors.white60, height: 1.3),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -391,7 +602,7 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Seçilen tarihteki karşılaşmalar Poisson dağılımı ile kıyaslanıyor...',
+            'Seçilen tarihteki karşılaşmalar Poisson dağılımı ve düşen oranlar taranıyor...',
             style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
           ),
         ],
@@ -425,6 +636,32 @@ class _ValueBetRadarScreenState extends ConsumerState<ValueBetRadarScreen> {
               label: const Text('Tekrar Tara'),
               style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
               onPressed: _scanForValue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyDroppingOddsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.trending_down, size: 64, color: Colors.amber.withValues(alpha: 0.3)),
+            const SizedBox(height: 16),
+            Text(
+              '${_selectedDate.day}.${_selectedDate.month}.${_selectedDate.year} tarihinde %7 ve üzeri sert düşen oran tespit edilmedi.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Piyasa oranları model beklentileriyle dengeli seyrediyor.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
         ),

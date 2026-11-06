@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 class MomentumGraph extends StatelessWidget {
-  const MomentumGraph({super.key});
+  final List<double>? momentumPoints;
+  const MomentumGraph({super.key, this.momentumPoints});
 
   @override
   Widget build(BuildContext context) {
+    final points = momentumPoints ?? const [4, 7, 5, -2, -5, 2, 8, 3, -1, 6];
+
     return SizedBox(
       height: 120,
       child: BarChart(
@@ -20,16 +23,8 @@ class MomentumGraph extends StatelessWidget {
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           barGroups: [
-            _makeGroup(0, 4),
-            _makeGroup(1, 7),
-            _makeGroup(2, 5),
-            _makeGroup(3, -2),
-            _makeGroup(4, -5),
-            _makeGroup(5, 2),
-            _makeGroup(6, 8),
-            _makeGroup(7, 3),
-            _makeGroup(8, -1),
-            _makeGroup(9, 6),
+            for (int i = 0; i < points.length; i++)
+              _makeGroup(i, points[i]),
           ],
         ),
       ),

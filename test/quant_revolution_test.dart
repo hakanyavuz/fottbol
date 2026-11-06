@@ -128,6 +128,31 @@ void main() {
       expect(snapshot.tacticalAlert, contains('Canlı Baskı Alarmı'));
     });
 
+    test('LiveMomentumService 10 dilimli dinamik timeline üretir', () {
+      final events = [
+        MatchEvent(time: 15, teamName: 'Real Madrid', playerName: 'Vinicius', type: MatchEventType.substitution, detail: 'Shot on target'),
+        MatchEvent(time: 35, teamName: 'Real Madrid', playerName: 'Bellingham', type: MatchEventType.goal, detail: 'Normal Goal'),
+        MatchEvent(time: 55, teamName: 'Getafe', playerName: 'Mayoral', type: MatchEventType.card, detail: 'Red Card'),
+      ];
+
+      final timeline = LiveMomentumService.generateTimeline(
+        currentMinute: 75,
+        events: events,
+        homeTeamName: 'Real Madrid',
+        awayTeamName: 'Getafe',
+        liveHomeXg: 2.10,
+        liveAwayXg: 0.30,
+      );
+
+      expect(timeline.length, equals(10));
+      for (final val in timeline) {
+        expect(val, greaterThanOrEqualTo(-10.0));
+        expect(val, lessThanOrEqualTo(10.0));
+      }
+      // Kırmızı kart ve golden sonra ev sahibi momentumunun yüksek çıkması gerekir
+      expect(timeline.last, greaterThan(0.0));
+    });
+
     test('DroppingOddsService piyasa oran düşüşlerini listeler', () {
       final home = _mockTeam(id: '1', name: 'Arsenal', league: 'Premier League');
       final away = _mockTeam(id: '2', name: 'Chelsea', league: 'Premier League');

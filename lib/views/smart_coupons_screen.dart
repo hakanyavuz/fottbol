@@ -224,6 +224,14 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
               apiService: footballService,
             ).timeout(const Duration(milliseconds: 1500), onTimeout: () => null);
 
+            final eloMults = ClubEloService.calculateGoalMultipliers(homeElo - awayElo);
+            final eloMarketOdds = odds ??
+                footballService.simulateMarketOdds(
+                  lambdaHome: (1.50 * eloMults.homeMultiplier).clamp(0.45, 3.40),
+                  lambdaAway: (1.18 * eloMults.awayMultiplier).clamp(0.35, 3.10),
+                  bookmakerName: 'Elo Piyasa Çizgisi',
+                );
+
             final pred = PoissonEngine.calculatePrediction(
               homeTeam: teams.home,
               awayTeam: teams.away,
@@ -233,12 +241,11 @@ class _SmartCouponsScreenState extends ConsumerState<SmartCouponsScreen> {
               weatherCondition: weather.toWeatherCondition,
               homeElo: homeElo,
               awayElo: awayElo,
-              marketOdds: odds,
+              marketOdds: eloMarketOdds,
             );
 
-            odds ??= footballService.simulateMarketOdds(lambdaHome: pred.lambdaHome, lambdaAway: pred.lambdaAway);
             pred.oddsComparison = OddsComparison.fromModelAndOdds(
-              odds: odds,
+              odds: eloMarketOdds,
               modelHomeProb: pred.homeWinProbability,
               modelDrawProb: pred.drawProbability,
               modelAwayProb: pred.awayWinProbability,

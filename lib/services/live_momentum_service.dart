@@ -125,4 +125,42 @@ class LiveMomentumService {
       tacticalAlert: alert,
     );
   }
+
+  /// Maçın başından güncel dakikaya kadar 10 eşit zaman dilimindeki momentum trendini [-10.0, +10.0] skalasında üretir
+  static List<double> generateTimeline({
+    required int currentMinute,
+    required List<MatchEvent> events,
+    double? liveHomeXg,
+    double? liveAwayXg,
+    String homeTeamName = 'Ev Sahibi',
+    String awayTeamName = 'Deplasman',
+  }) {
+    final minute = math.max(10, currentMinute);
+    final slice = minute / 10.0;
+    final timeline = <double>[];
+
+    for (int i = 1; i <= 10; i++) {
+      final pointMinute = (i * slice).round();
+      final snapshot = analyzeMomentum(
+        currentMinute: pointMinute,
+        events: events,
+        liveHomeXg: (liveHomeXg != null && liveHomeXg > 0) ? (liveHomeXg * (i / 10.0)) : null,
+        liveAwayXg: (liveAwayXg != null && liveAwayXg > 0) ? (liveAwayXg * (i / 10.0)) : null,
+        homeTeamName: homeTeamName,
+        awayTeamName: awayTeamName,
+      );
+
+      // [-100, +100] aralığını bar chart için [-10, +10] aralığına ölçekle
+      double scaled = (snapshot.homeMomentum / 10.0).clamp(-10.0, 10.0);
+
+      // Eğer hiç olay yoksa dakikaya göre hafif dinamik salınım ver (sabit kalmasın)
+      if (events.isEmpty && (scaled == 0.0)) {
+        scaled = math.sin(i * 0.7) * 2.5;
+      }
+
+      timeline.add(double.parse(scaled.toStringAsFixed(1)));
+    }
+
+    return timeline;
+  }
 }
