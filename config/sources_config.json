@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updated_at": "2026-11-25T01:51:25.713223Z",
+  "updated_at": "2026-11-25T16:41:08.805743Z",
   "health_check": {
     "timeout_ms": 3000,
     "probe_interval_minutes": 30,
